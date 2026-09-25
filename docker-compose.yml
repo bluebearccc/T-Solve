@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16      # PostgreSQL + pgvector (needed later for semantic search)
+    container_name: tsolve-db
+    environment:
+      POSTGRES_DB: tsolve
+      POSTGRES_USER: tsolve
+      POSTGRES_PASSWORD: tsolve
+    ports:
+      - "5432:5432"
+    volumes:
+      - tsolve-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tsolve -d tsolve"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tsolve-db-data:

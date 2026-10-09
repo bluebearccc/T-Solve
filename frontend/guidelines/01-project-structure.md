@@ -124,7 +124,7 @@ import { useApproveTickets } from '../../review/hooks/useApproveTickets';
 
 *Why:* the owner of `review` can rename, split or rewrite anything inside the folder without breaking
 other features. Only `index.ts` is a promise to the rest of the app. ESLint fails the build on deep
-imports (`boundaries/entry-point`). Two exceptions, both enforced by the same lint config:
+imports (`boundaries/dependencies`). Two exceptions, both enforced by the same lint config:
 `app/router/feature-routes.ts` imports `routes` from each `index.ts` (normal), and `src/mocks/handlers.ts`
 imports each feature's `mocks/handlers.ts` directly so mock code never ships in the production bundle.
 

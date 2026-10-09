@@ -1,0 +1,12 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local environment (keep .env.example)
+.env.local
+.env.*.local
+
+# Test output
+coverage/
+.vitest/

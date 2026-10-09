@@ -8,7 +8,7 @@ Manager, Project Manager and Staff. The T-Solve Jira App is a separate app and i
 
 ## Prerequisites
 
-- **Node 24 LTS** (see `.nvmrc`; ≥ 22.22 works). With nvm: `nvm use`.
+- **Node 24 LTS** (see `.nvmrc`; 24.15+ or 22.22.2+ works). With nvm: `nvm use`.
 - npm (comes with Node).
 - For the real backend: the backend running on `http://localhost:8080` (see the root `README.md`).
 - VS Code with the **ESLint** and **Prettier** extensions, *Format On Save* on.

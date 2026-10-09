@@ -115,10 +115,10 @@ Single-ticket Approve, Request changes and Send back to queue have no extra conf
   and `CsvUpload` (.csv, ≤ 10 MB → MSG33, MSG34). Files are checked when added and sent with the form —
   no automatic upload. Existing Evidence is read-only (never removable).
 
-## 7. Accessibility in forms
+## 7. Labels and focus
 
 Every field has a visible label (no placeholder-only fields); errors are linked to the field (antd does
-this); the first invalid field gets focus on submit (`scrollToFirstError`); everything works with the keyboard.
+this); the first invalid field gets focus on submit (`scrollToFirstError`).
 
 ## 8. Checklist
 

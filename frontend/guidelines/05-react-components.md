@@ -131,18 +131,16 @@ Pull non-trivial conditions into a named variable or a small function so they ca
 const canRequestChanges = ticket.source === 'SOLUTION_FORM'; // MSG22 otherwise
 ```
 
-## 3. Accessibility basics (NFR: WCAG 2.1 AA, keyboard use, visible labels)
+## 3. Semantic HTML basics
 
-antd covers most of this when used as intended. Our part:
+Not an NFR (the FE Lead removed the accessibility NFR on 2026-10-09), but cheap and it keeps tests simple —
+tests find elements by role and label ([10](10-testing.md) T1):
 
-- **Clickable things are `<Button>` or `<a>`/`<Link>`** — never a `<div onClick>`. 🔒 `jsx-a11y`
+- **Clickable things are `<Button>` or `<a>`/`<Link>`** — never a `<div onClick>`.
 - **Every form field has a visible label** via `FormField`/`Form.Item label`. Placeholders are not labels.
 - **Icon-only buttons have `aria-label`** (`<Button icon={<DeleteOutlined />} aria-label="Remove" />`).
-- **Do not convey meaning by colour alone** — `StatusTag` shows text, not just a colour.
-- **Keyboard:** every action reachable with Tab/Enter/Space; modals trap focus and close on Esc
-  (antd does this — do not disable it).
-- **Images** that carry meaning have `alt`; decorative ones have `alt=""`.
-- Use the theme colours only; they were chosen to meet AA contrast. Don't invent lighter greys.
+- **Status is text, not only colour** — `StatusTag` shows the status name.
+- Don't disable antd's built-in keyboard behaviour (Esc closes modals, Enter submits forms).
 
 ## 4. Checklist
 

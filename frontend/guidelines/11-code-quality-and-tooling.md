@@ -21,16 +21,16 @@
 
 Run the first four before every push: `npm run lint && npm run typecheck && npm run test`.
 
-## 2. ESLint (flat config, ESLint 9)
+## 2. ESLint (flat config, ESLint 10)
 
 Plugins: `typescript-eslint` (type-aware), `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`,
-`eslint-plugin-jsx-a11y`, `eslint-plugin-boundaries`, `@tanstack/eslint-plugin-query`, and
-`eslint-config-prettier` last (turns off rules Prettier handles).
+`eslint-plugin-boundaries` (+ `eslint-import-resolver-typescript` so it understands `@/` and `.ts`),
+`@tanstack/eslint-plugin-query`, and `eslint-config-prettier` last (turns off rules Prettier handles).
+No accessibility plugin (the accessibility NFR was removed — decision log FE-25).
 
 | Rule | Level | Why |
 |---|---|---|
-| `boundaries/element-types` | error | Enforces `app → features → shared`; `shared` never imports `features`/`app` ([01](01-project-structure.md)). |
-| `boundaries/entry-point` | error | Another feature only through its `index.ts`. |
+| `boundaries/dependencies` | error | One rule for the whole architecture ([01](01-project-structure.md)): `app → features → shared`; `shared` never imports `features`/`app`; another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES` in `eslint.config.js`); `src/mocks` may import each feature's `mocks/`; test files may import `src/test` and `src/mocks`. Imports inside one feature are free. |
 | `no-restricted-imports` (antd `Tag`, `Table`, `Modal`, `Upload`, `message`, `notification` outside `shared/ui`) | error | Use the kit component ([07](07-ui-and-styling.md) U1). The error message names it. |
 | `no-restricted-imports` (`@/shared/api/generated/*`, `react-router-dom`, `axios`) | error | Import from `@/shared/api`; v8 has no `react-router-dom`; one HTTP client. |
 | `@typescript-eslint/no-explicit-any`, `ban-ts-comment`, `no-non-null-assertion` | error | [04](04-typescript.md) R1–R3. |
@@ -38,7 +38,6 @@ Plugins: `typescript-eslint` (type-aware), `eslint-plugin-react-hooks`, `eslint-
 | `@typescript-eslint/no-floating-promises`, `no-misused-promises` | error | A forgotten `await`/`.catch` hides errors. |
 | `react-hooks/rules-of-hooks` · `react-hooks/exhaustive-deps` | error · warn | Hooks called correctly; effect dependencies complete. |
 | `@tanstack/query/exhaustive-deps` | error | Query keys include every variable the query uses. |
-| `jsx-a11y` recommended | error | Real buttons, labels, alt text ([05](05-react-components.md) §3). |
 | `react-refresh/only-export-components` | warn | Keeps hot reload working. |
 | `no-console` (allows `warn`, `error`) | warn | No debug logs left behind; never log ticket content or personal data (DevOps §8). |
 | `eqeqeq` | error | `===` only. |
@@ -55,7 +54,8 @@ Never disable a rule for a whole file; never edit `eslint.config.js` in a featur
 
 `.prettierrc`: `singleQuote: true`, `semi: true`, `trailingComma: "all"`, `printWidth: 100`.
 `.prettierignore`: `dist/`, `src/shared/api/generated/`, `public/mockServiceWorker.js`,
-`openapi/` (the spec stays as the backend emits it).
+`openapi/` (the spec stays as the backend emits it), `package-lock.json`, and **`*.md`** — guidelines are
+hand-formatted with compact tables (Prettier would pad every table: bigger diffs and more tokens for AI agents).
 
 Install the **ESLint** and **Prettier** extensions in VS Code and turn on *Format On Save*.
 (Line endings are LF — the repo's `.gitattributes` enforces it, which matters on Windows.)
@@ -75,14 +75,14 @@ Install the **ESLint** and **Prettier** extensions in VS Code and turn on *Forma
 | `api:pull` | download `http://localhost:8080/v3/api-docs.yaml` into `openapi/tsolve-api.yaml` |
 
 `npm ci` (not `npm install`) everywhere except when you deliberately add a dependency. Node version comes
-from `.nvmrc` (24); `engines` in `package.json` allows ≥ 22.22.
+from `.nvmrc` (24); `engines` in `package.json` allows 22.22.2+ or 24.15+ (jsdom 30 minimum).
 
 ## 5. For DevOps: what hooks and CI should call
 
 All commands run **inside `frontend/`**.
 
 **pre-commit (on staged files under `frontend/`):**
-`prettier --write` on `*.{ts,tsx,css,json,md}` and `eslint --fix` on `*.{ts,tsx}`. Exclude
+`prettier --write` on `*.{ts,tsx,js,css,json}` and `eslint --fix` on `*.{ts,tsx}`. Exclude
 `src/shared/api/generated/**`.
 
 **CI job (path filter `frontend/**`), in order:**
@@ -106,7 +106,13 @@ Use Node from `frontend/.nvmrc` and cache `~/.npm` keyed on `frontend/package-lo
 "duplication" nobody can fix.
 
 **Dependabot:** weekly for `/frontend` (npm); group minor/patch updates into one PR; majors one by one —
-the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7, ESLint 10 are held back on purpose).
+the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7 is held back on purpose; keep
+`typescript` on `~6.0`).
+
+**`npm audit`:** expect 4 *high* advisories from one chain — `eslint-plugin-boundaries` → `micromatch` →
+`braces` (no fixed `braces` exists). It is lint-time only and processes our own config, never user input or the
+shipped app; accepted in FE-26. Don't run `npm audit fix --force` (it downgrades the plugin). The critical
+`handlebars` advisory is fixed by the `overrides` entry in `package.json`.
 
 ## 6. Build and Docker
 

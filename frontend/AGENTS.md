@@ -22,7 +22,7 @@ Figma kit mapping (07), system messages (`src/shared/messages/catalog.ts`).
 
 React 19 · TypeScript 6 (strict) · Vite 8 · Ant Design 6 · React Router 8 (data mode) ·
 TanStack Query 5 · orval 8 (API client generated from OpenAPI) · MSW 3 (mocks) · Vitest 5 +
-React Testing Library · ESLint 9 + Prettier · Node 24 LTS.
+React Testing Library · ESLint 10 + Prettier · Node 24 LTS.
 
 ## Hard rules
 

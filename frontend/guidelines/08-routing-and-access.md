@@ -1,6 +1,6 @@
 # 08 · Routing & access
 
-> **Applies to:** `src/app/router/`, `src/shared/routing/`, `src/shared/auth/`, every `features/*/routes.tsx`,
+> **Applies to:** `src/app/router/`, `src/shared/routing/`, `src/shared/auth/`, every `features/*/routes.ts`,
 > and any code that shows or hides something by role.
 > **Why it matters:** each role must land on its own screen, never see another role's screens, and get a
 > clear 403/404 instead of a broken page. Declaring access in one place per route keeps that consistent.
@@ -37,8 +37,9 @@ Paths live in `shared/routing/paths.ts` (pre-filled). Always use `paths.*`, neve
 | 9.2 | Audit Log | `/audit-log` | `audit-log/AuditLogPage` | Admin |
 | 9.3 | Audit Entry Detail (popup) | — | `audit-log/AuditEntryDetailModal` | Admin |
 
-Plus: `/` → landing page of the signed-in role (or `/login`), `/403` is shown in place by the guard,
-anything else → 404. In dev builds only: `/dev/kit`.
+Plus: `/` → landing page of the signed-in role (or `/login`); 403 is shown in place by the guard;
+anything else → 404 ("This page does not exist." — the SRS has no MSG code for it yet; open point).
+In dev builds only: `/dev/kit`.
 
 **Landing page per role** (SRS Screen List #1): Admin → User List · Department Manager → Knowledge
 Dashboard · Project Manager → Review Queue · Staff → Search. Defined once in `shared/auth/landing.ts`.
@@ -46,21 +47,26 @@ Dashboard · Project Manager → Review Queue · Staff → Search. Defined once 
 ## 2. How a feature declares its routes
 
 We use React Router 8 in **data mode** (`createBrowserRouter`). Each feature exports a list of
-`FeatureRoute`s; `app/router/router.tsx` turns them into router objects inside the guarded shell.
+`FeatureRoute`s; `app/router/routes.tsx` turns them into router objects inside the guarded shell.
 
-```tsx
-// features/review/routes.tsx
-import type { FeatureRoute } from '@/shared/routing';
-import { paths } from '@/shared/routing';
+```ts
+// features/review/routes.ts
+import { paths, type FeatureRoute } from '@/shared/routing';
 
 export const reviewRoutes: FeatureRoute[] = [
-  { path: paths.reviewQueue,    roles: ['PROJECT_MANAGER'], lazy: () => import('./pages/ReviewQueuePage') },
-  { path: paths.reviewHistory,  roles: ['PROJECT_MANAGER'], lazy: () => import('./pages/ReviewHistoryPage') },
-  { path: paths.expiredTickets, roles: ['PROJECT_MANAGER'], lazy: () => import('./pages/ExpiredTicketsPage') },
+  {
+    path: paths.reviewQueue,
+    title: 'Review Queue', // 7.1 — SRS screen name, shown in the header and the browser tab
+    roles: ['PROJECT_MANAGER'],
+    lazy: () => import('./pages/ReviewQueuePage'),
+  },
+  // … Review History (7.4), Expired Tickets (7.5)
 ];
 ```
 
-- `roles` is **required** — the type does not compile without it. *Why:* forgetting a guard should be
+- `title` is the SRS screen name; the AppShell header shows it ([07](07-ui-and-styling.md) U4).
+- `roles` is **required** — the type does not compile without it. `'GUEST'` means signed-out users only
+  (Login); `ALL_SIGNED_IN_ROLES` is every role (My Profile). *Why:* forgetting a guard should be
   impossible, not just unlikely.
 - `lazy` loads each page's code only when it is opened (smaller first load; NFR "page loads within 2 s").
 - **No route `loader`s for data.** Data is fetched by TanStack Query inside the page ([06](06-data-layer.md)).
@@ -69,7 +75,8 @@ export const reviewRoutes: FeatureRoute[] = [
 ## 3. Guards
 
 ```
-<RequireAuth>                 session pending → full-page LoadingState
+<GuestOnly>                   (Login) a signed-in user → their landing page
+<RequireAuth>                 session pending → full-page loading spinner
                               no session (401) → /login?returnTo=<current path>
   <AppShell>
     <RequireRole roles=…>     role not in route.roles → ForbiddenPage (MSG08), URL unchanged
@@ -139,7 +146,7 @@ Detail are modals opened by their parent screen with local state (`const [isReje
 
 ## 9. Checklist
 
-- [ ] New route added in the feature's `routes.tsx` with `roles`, using `paths.*` and `lazy`.
+- [ ] Route in the feature's `routes.ts` with `title`, `roles`, `paths.*` and `lazy`.
 - [ ] Filters/tabs/pagination in search params; detail ids in path params with a 404 state.
 - [ ] Actions hidden with named `useSession()` checks, never raw role strings in JSX.
 - [ ] Popups are modals with local state.

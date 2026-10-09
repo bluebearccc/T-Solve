@@ -35,19 +35,24 @@ edit these files.
 | `shared/routing/paths.ts` | all 25 screen paths and builders | use `paths.reviewQueue`, `paths.ticketDetail(id)` |
 | `mocks/handlers.ts` | one line per feature's `mocks/handlers.ts` | write handlers in your feature's `mocks/handlers.ts` |
 
-Every feature folder already exists with an `index.ts` exporting an empty route list, so these imports
-compile from day one.
+Every feature folder already exists with its `index.ts`, its `routes.ts` (all its screens) and a placeholder
+page per screen, so every menu item works from day one and you only replace your placeholder pages.
 
 ✅ Do — add your screen inside your own feature:
 
 ```tsx
-// features/search/routes.tsx
+// features/search/routes.ts
 export const searchRoutes: FeatureRoute[] = [
-  { path: paths.search, roles: ['STAFF', 'PROJECT_MANAGER', 'DEPARTMENT_MANAGER'], lazy: () => import('./pages/SearchPage') },
+  {
+    path: paths.search,
+    title: 'Search', // 6.1
+    roles: ['STAFF', 'PROJECT_MANAGER', 'DEPARTMENT_MANAGER'],
+    lazy: () => import('./pages/SearchPage'),
+  },
 ];
 ```
 
-❌ Don't — open `app/router/router.tsx` and add `<Route path="/search" …>` there.
+❌ Don't — open `app/router/routes.tsx` and add a `/search` route there.
 
 *Why:* if five people each add a line to one route file, every PR conflicts with every other PR.
 

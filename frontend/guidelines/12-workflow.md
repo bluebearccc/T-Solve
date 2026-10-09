@@ -18,9 +18,10 @@ Example: Jira issue `TS-57` "6.2 Ticket List" in feature `tickets`.
 3. **Check the API** in `openapi/tsolve-api.yaml`. If the endpoint is missing or wrong, agree it with the
    backend owner and add/fix it in the YAML (it can be a stub until the backend lands), then
    `npm run generate:api`. ([06](06-data-layer.md) §2)
-4. **Route:** add the screen to your feature's `routes.tsx` with its `roles` and `lazy` page. The path
+4. **Route:** your screen is already in your feature's `routes.ts` (path, title, roles) with a placeholder
+   page — check the roles against the Permission Matrix. The path
    already exists in `paths.ts`; the menu entry already exists. ([08](08-routing-and-access.md))
-5. **Page skeleton:** `PageHeader` with the SRS title + the four states (loading / error / empty / data)
+5. **Page skeleton:** replace the `ScreenPlaceholder` with a toolbar + the four states (loading / error / empty / data)
    wired to a feature hook. ([05](05-react-components.md) C9)
 6. **Feature hooks** in `hooks/`: wrap the generated hooks; URL search params for filters; invalidation and
    MSG toasts for mutations. ([06](06-data-layer.md) §3–4)

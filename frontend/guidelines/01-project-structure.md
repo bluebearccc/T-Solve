@@ -17,7 +17,8 @@ frontend/
 │   ├── app/                         # WIRING ONLY — owner: FE Lead
 │   │   ├── App.tsx
 │   │   ├── providers/               # AppProviders: antd ConfigProvider + App, QueryClientProvider
-│   │   ├── router/                  # router.tsx, feature-routes.ts, RequireAuth, RequireRole
+│   │   ├── router/                  # routes.tsx (route tree), feature-routes.ts, guards.tsx, router.ts
+│   │   ├── dev/                     # DevRoleSwitcher (dev builds only)
 │   │   ├── layout/                  # AppShell, SideMenu, UserMenu, menu-config.ts
 │   │   ├── theme/                   # theme.ts (antd tokens from Figma STYLES)
 │   │   └── pages/                   # ForbiddenPage (403), NotFoundPage (404)
@@ -34,7 +35,7 @@ frontend/
 │   │   ├── lib/                     # tiny pure helpers (date.ts, …)
 │   │   └── config/env.ts            # typed access to import.meta.env
 │   ├── mocks/                       # MSW setup: browser.ts, server.ts, handlers.ts
-│   └── test/                        # test setup and renderWithProviders
+│   └── test/                        # test setup, renderApp and renderWithProviders
 ├── .env.example · .nvmrc · .prettierrc · eslint.config.js · orval.config.ts
 ├── tsconfig*.json · vite.config.ts · package.json · package-lock.json
 └── Dockerfile · .dockerignore · Caddyfile
@@ -73,7 +74,7 @@ features is cheaper to merge later than a wrong shared abstraction is to undo.
 ```
 features/review/
 ├── index.ts                    # PUBLIC API — the only file others may import
-├── routes.tsx                  # route objects for this feature's screens
+├── routes.ts                   # FeatureRoute list for this feature's screens
 ├── pages/
 │   ├── ReviewQueuePage.tsx     # 7.1
 │   ├── ReviewHistoryPage.tsx   # 7.4
@@ -89,7 +90,9 @@ features/review/
 └── ReviewQueuePage.test.tsx    # tests sit next to what they test
 ```
 
-- Create only the sub-folders you need. A tiny feature may have just `index.ts`, `routes.tsx` and `pages/`.
+- Every feature folder and every screen's page file already exist; a page starts as a `ScreenPlaceholder`
+  that the owner replaces with the real screen.
+- Create only the sub-folders you need. A tiny feature may have just `index.ts`, `routes.ts` and `pages/`.
 - No `utils/` or `helpers/` dump folders. A helper used by one component lives in that component's file;
   a helper used across the feature gets a named file (`hooks/`, or a clearly named `.ts` next to its user).
 - No feature-level `types.ts` for API shapes — they are generated. UI-only types sit next to the

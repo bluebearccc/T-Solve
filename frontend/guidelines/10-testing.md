@@ -13,7 +13,7 @@
 | **React Testing Library** + **user-event** | render components and act like a user (click, type, Tab) |
 | **jsdom** | browser-like DOM in Node |
 | **MSW 3** | intercepts `fetch` and answers with the same handlers used in mock mode — tests go through the real `http.ts`, generated hooks and TanStack Query |
-| `src/test/render.tsx` | `renderWithProviders(ui, { role, route })` — wraps in theme, a fresh QueryClient (no retries), router, and a signed-in session of the given role |
+| `src/test/render.tsx` | `renderApp(path, { role })` — the whole app (real routes, guards, AppShell) at a URL · `renderWithProviders(ui, { role })` — one component with theme, antd and a fresh QueryClient (no retries). `role: null` = signed out. |
 
 Not adopted (on purpose): E2E (Playwright/Cypress), snapshot tests, coverage thresholds, component
 screenshots. *Why:* high upkeep for a 14-week MVP; the Tester's system and acceptance tests (Report 5)

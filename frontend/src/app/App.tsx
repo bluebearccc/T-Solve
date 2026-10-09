@@ -1,9 +1,11 @@
-/** Temporary root — replaced by providers, router and AppShell in the next scaffold step. */
+import { RouterProvider } from 'react-router/dom';
+import { AppProviders } from './providers/AppProviders';
+import { router } from './router/router';
+
 export function App() {
   return (
-    <main>
-      <h1>T-Solve</h1>
-      <p>Frontend scaffold in progress.</p>
-    </main>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   );
 }

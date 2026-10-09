@@ -1,0 +1,70 @@
+/* Figma "Web/App Shell": Sider 252 + Header 64, content padding 24 (guideline 07 §5). */
+.shell {
+  min-height: 100vh;
+}
+
+.sider {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+  padding: var(--ant-padding-lg) var(--ant-padding);
+  border-inline-end: 1px solid var(--ant-color-border-secondary);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--ant-margin-xs);
+  padding: 0 var(--ant-padding) var(--ant-padding-lg);
+}
+
+.logoMark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-primary);
+  color: var(--ant-color-text-light-solid);
+  font-weight: 600;
+}
+
+.productName {
+  color: var(--ant-color-primary);
+  font-size: var(--ant-font-size-heading-2);
+  line-height: var(--ant-line-height-heading-2);
+  font-weight: 600;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--ant-margin-sm);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.content {
+  padding: 0 var(--ant-padding-lg) var(--ant-padding-lg);
+}
+
+.userButton {
+  display: flex;
+  align-items: center;
+  gap: var(--ant-margin-sm);
+  height: auto;
+}
+
+.avatar {
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary);
+}
+
+.caret {
+  font-size: var(--ant-font-size-sm);
+  color: var(--ant-color-text-secondary);
+}

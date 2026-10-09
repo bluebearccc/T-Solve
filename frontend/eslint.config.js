@@ -3,6 +3,7 @@
 import js from '@eslint/js';
 import { existsSync, readdirSync } from 'node:fs';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
+import pluginQuery from '@tanstack/eslint-plugin-query';
 import importX from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -85,6 +86,7 @@ export default defineConfig([
       tseslint.configs.recommendedTypeChecked,
       reactHooks.configs.flat['recommended-latest'],
       reactRefresh.configs.vite,
+      pluginQuery.configs['flat/recommended'],
     ],
     languageOptions: {
       globals: globals.browser,

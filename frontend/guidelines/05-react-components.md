@@ -31,7 +31,7 @@ longer hold the whole component in their head. (Industry guidance varies; these 
 ```tsx
 /** 7.1 Review Queue — SRS III.7.1 */
 export function ReviewQueuePage() { … }
-export default ReviewQueuePage; // used by routes.tsx lazy import
+export default ReviewQueuePage; // used by the lazy import in routes.ts
 ```
 
 ### C4 — Props: few, typed, specific.

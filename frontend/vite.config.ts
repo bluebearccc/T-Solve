@@ -14,6 +14,28 @@ export default defineConfig({
     // Real-backend mode: /api is forwarded to the local Spring Boot app, so the session cookie is same-origin.
     proxy: { '/api': 'http://localhost:8080' },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries in their own chunks: they change rarely, so browsers keep them cached across deploys.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react',
+              test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
+              priority: 3,
+            },
+            {
+              name: 'antd',
+              test: /node_modules[\\/](antd|@ant-design|@rc-component|rc-[^\\/]+)[\\/]/,
+              priority: 2,
+            },
+            { name: 'vendor', test: /node_modules/, priority: 1 },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

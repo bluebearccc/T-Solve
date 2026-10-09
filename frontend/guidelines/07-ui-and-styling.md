@@ -63,7 +63,7 @@ Each "Web/…" component maps to exactly one thing in code. Props mirror the Fig
 | Web/Upload (Idle/Dragging/File listed/File error) | `EvidenceUpload` · `CsvUpload` | limits and MSG40/MSG62/MSG33/MSG34 built in |
 | Web/App Shell (Role=4) + Web/Menu Item | `app/layout/AppShell` + `SideMenu` | §5 |
 | Icons (Ant Design Icons) | `@ant-design/icons`, same names (`Icon/Inbox` → `InboxOutlined`) | |
-| *(part of every screen frame, no own component)* | `PageHeader` · `AppForm` | screen title + actions · antd `Form` with our defaults ([09](09-forms-and-validation.md)) |
+| *(part of every form, no own component)* | `AppForm` | antd `Form` with our defaults ([09](09-forms-and-validation.md)) |
 
 **StatusTag values** (exactly these 15 — the Figma variants Deferred, Running and Succeeded are retired):
 Pending review · Changes requested · Published · Rejected · Unpublished · Expired · Active · Deactivated ·
@@ -108,15 +108,18 @@ import styles from './ReviewQueueTable.module.css';
 
 - ❌ No hex/rgb colours, no pixel font sizes — use `var(--ant-…)`.
 - ❌ No `style={{…}}` except for values computed at runtime (e.g. a chart width).
-- ❌ No global CSS, no `:global(.ant-…)` overrides, no `!important`. antd 6 changed many internal DOM
+- ❌ No global CSS (the one exception: antd's `reset.css`, imported once in `main.tsx`), no
+  `:global(.ant-…)` overrides, no `!important`. antd 6 changed many internal DOM
   structures; selectors on `.ant-*` internals break on upgrades. If a kit component needs a tweak, the
   FE Lead adds it in `shared/ui` (antd's `classNames`/`styles` props).
 - *Why:* CSS Modules scope class names automatically, so two features can both write `.toolbar` without
   clashing — no naming scheme to remember, no cross-feature conflicts.
 
-### U4 — One screen = one `PageHeader` + content.
-`PageHeader` (kit) shows the screen title exactly as in the SRS (e.g. "Review Queue") and optional
-primary actions on the right. Filters go in a toolbar row under it; the main table or cards below.
+### U4 — The title is in the AppShell header; a page starts with its content.
+The header (Figma "Web/App Shell": *Page title*, H1) shows the screen name from the route's `title`
+([08](08-routing-and-access.md) §2) and sets the browser tab to "<title> · T-Solve". Pages don't render their own H1.
+A page starts with a toolbar row (filters on the left, the primary action on the right — use `Flex`),
+then the table or cards.
 
 ### U5 — Text and formatting.
 UI text is English, copied from the SRS. Dates use `formatDate` / `formatDateTime` (dd/MM/yyyy HH:mm,
@@ -139,8 +142,9 @@ from `app/layout/menu-config.ts`, pre-filled with the approved menus (landing pa
 | Department Manager | Knowledge Dashboard · Search · Ticket List · Jira Integration |
 | Admin | User List · Workspace Settings · Jira Integration · Audit Log · Knowledge Dashboard |
 
-The selected item follows the current route (detail screens highlight their list's item, e.g. Ticket
-Detail → Ticket List). Menu changes need a UI-decision change first — they are not a feature's choice.
+The selected item follows the current route: the longest menu path the URL starts with, so detail screens
+highlight their list (Ticket Detail → Ticket List); My Profile highlights nothing. In dev builds a small
+**role switcher** (bottom right) signs you in as any role or signs you out; it is not in production builds. Menu changes need a UI-decision change first — they are not a feature's choice.
 
 ## 6. Checklist
 

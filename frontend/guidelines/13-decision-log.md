@@ -35,6 +35,8 @@
 | FE-25 | ESLint 10, no accessibility lint plugin | Approved — supersedes the ESLint part of FE-01 |
 | FE-26 | Import boundaries with import-x instead of eslint-plugin-boundaries | Approved — supersedes the tool in FE-14 |
 | FE-27 | Prettier does not format Markdown | Approved |
+| FE-28 | Screen title in the AppShell header, from the route | Approved (step 5.2) |
+| FE-29 | Library chunks and antd reset.css | Approved (step 5.2) |
 
 ---
 
@@ -164,6 +166,16 @@ two checks the old setup lacked (features → `app/`, non-test code → test hel
 **FE-27 — Prettier does not format Markdown (2026-10-09).** `*.md` is in `.prettierignore`. *Why:* Prettier
 pads every Markdown table to equal column widths — each small doc edit becomes a whole-table diff, and the
 padding adds tokens every time an AI agent loads the guidelines.
+
+**FE-28 — Screen title in the AppShell header (2026-10-09, step 5.2).** Each `FeatureRoute` has a `title`
+(the SRS screen name); the AppShell header shows it and the browser tab reads "<title> · T-Solve". There is
+no `PageHeader` component. *Why:* the Figma App Shell puts the page title in the header, so it belongs to the
+shell, not to each page; one source (the route) keeps header, tab and menu consistent.
+
+**FE-29 — Library chunks and antd reset (2026-10-09, step 5.2).** `vite.config.ts` splits React, antd and other
+libraries into their own chunks; `antd/dist/reset.css` is the only global CSS. *Why:* our code is ~20 kB and
+changes every deploy, while the libraries (about 270 kB gzipped) rarely change, so browsers keep
+them cached; without a reset the browser's default `body` margin offsets the shell.
 
 ## Working conventions (not code decisions)
 

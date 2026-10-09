@@ -1,0 +1,195 @@
+# 06 · Data layer & errors
+
+> **Applies to:** anything that reads or writes server data, and anything that shows a system message.
+> Files: `openapi/`, `orval.config.ts`, `src/shared/api/`, `src/shared/messages/`, `features/*/hooks/`.
+> **Why it matters:** with one way to call the API and one way to show messages, every screen behaves
+> the same, the types always match the backend, and MSG texts never drift from the SRS.
+
+## 1. The pipeline
+
+```
+openapi/tsolve-api.yaml ──(npm run generate:api)──► src/shared/api/generated/   NEVER EDIT
+                                                     ├── model/      types
+                                                     └── <tag>/      useGetX / useX hooks + query-key functions
+src/shared/api/index.ts      re-exports generated code + ApiError + http helpers
+features/<f>/hooks/useX.ts   wraps a generated hook: options, invalidation, MSG toasts
+features/<f>/pages/…         calls feature hooks only
+```
+
+- Server data lives **only** in the TanStack Query cache. No Redux/Zustand, no Context holding API data,
+  no `useState` copies of query results.
+- Pages and components import from `@/shared/api` (types) and their feature's `hooks/`. They never call
+  `fetch` and never import from `@/shared/api/generated/...` directly. 🔒 (lint)
+
+## 2. orval and regeneration
+
+- `orval.config.ts` generates TanStack Query hooks (`client: 'react-query'`) using the native `fetch`
+  transport through our wrapper `src/shared/api/http.ts` (`override.mutator`), split by OpenAPI tag
+  (`mode: 'tags-split'`), plus MSW mock handlers with fake data for every endpoint.
+- `http.ts` is the only place that touches `fetch`. It adds the base URL, sends the session cookie
+  (same origin: the Vite proxy in dev, Caddy in production), parses JSON and turns every non-2xx response
+  into an `ApiError` (§6).
+- Both the spec and the generated code are committed. *Why:* the app runs right after `npm ci` with no
+  backend, and every API change is visible in the PR diff.
+
+**When an endpoint changes** (one PR — DevOps design "one feature = one PR"):
+
+1. Backend changes the controller/DTO.
+2. With the backend running, `npm run api:pull` downloads its spec into `openapi/tsolve-api.yaml`
+   (or edit the YAML by hand while the endpoint doesn't exist yet — the stub is how frontend work starts
+   before the backend is ready).
+3. `npm run generate:api`.
+4. Fix the type errors that appear (`npm run typecheck`) — they show exactly which screens are affected.
+5. Commit spec + generated code + fixes together.
+
+Never resolve a merge conflict inside `generated/`; resolve the YAML and regenerate. (See [02](02-conflict-avoidance.md).)
+
+## 3. Feature hooks
+
+Wrap a generated hook in a feature hook when you add behaviour: polling, default params, invalidation,
+messages. A feature hook **never reuses the generated name**: generated `useGetReviewQueue` →
+feature `useReviewQueue`; generated `useApproveTickets` → feature `useApproveSelectedTickets`.
+If a generated query needs nothing extra, a page may call it directly.
+
+```ts
+// features/review/hooks/useReviewQueue.ts
+import { keepPreviousData } from '@tanstack/react-query';
+import { useGetReviewQueue, type GetReviewQueueParams } from '@/shared/api';
+
+export const REVIEW_QUEUE_POLL_MS = 5_000; // NFR: new ticket visible within 5 s
+
+export function useReviewQueue(params: GetReviewQueueParams) {
+  return useGetReviewQueue(params, {
+    query: {
+      refetchInterval: REVIEW_QUEUE_POLL_MS, // pauses automatically while the tab is hidden
+      placeholderData: keepPreviousData,     // no flicker when page/sort changes
+    },
+  });
+}
+```
+
+```ts
+// features/review/hooks/useApproveSelectedTickets.ts
+import { useQueryClient } from '@tanstack/react-query';
+import { getGetReviewQueueQueryKey, useApproveTickets } from '@/shared/api';
+import { showMessage } from '@/shared/messages';
+
+export function useApproveSelectedTickets() {
+  const queryClient = useQueryClient();
+  return useApproveTickets({
+    mutation: {
+      onSuccess: (result) => {
+        showMessage('MSG18', { count: result.approvedCount });
+        return queryClient.invalidateQueries({ queryKey: getGetReviewQueueQueryKey() });
+      },
+    },
+  });
+}
+```
+
+*(Hook and type names come from `operationId`s in the spec; the ones above are from our stub and will
+be confirmed when the scaffold is generated.)*
+
+## 4. Query keys, caching, invalidation
+
+- **Keys:** always the generated `getGetXQueryKey(params?)`. Never hand-written arrays.
+- **Invalidate after every successful mutation**, by the generated key of each list/detail it changes.
+  Calling the key function **without params** matches every variation of that query (all pages, all
+  filters) — that is what you usually want.
+
+  | Mutation | Invalidate |
+  |---|---|
+  | Approve / Reject / Request changes | Review Queue, Ticket Detail of those tickets, Ticket List |
+  | Unpublish / Re-publish / Send back | Ticket Detail, Ticket List, Expired Tickets, Review Queue |
+  | Import finished | Import History, Ticket List |
+
+- ❌ Never `queryClient.invalidateQueries()` with no key — it refetches the whole app.
+- **Defaults** (set once in `shared/api/query-client.ts`; don't override per hook without a reason):
+  `staleTime` 30 s · `gcTime` 5 min · queries retry once, except 4xx (never retried) · mutations never
+  retry · refetch on window focus on.
+- **No optimistic updates** in the MVP. Wait for the server, then invalidate. *Why:* simpler, and the
+  NFR (confirmation within 2 s) does not need them.
+- **Server-side pagination, 20 rows per page** (SRS III default). Page, size and sort go to the API as
+  query params and live in the URL (see [05](05-react-components.md) C8).
+
+## 5. Loading, error, empty
+
+| Flag (TanStack Query v5) | Meaning | Show |
+|---|---|---|
+| `isPending` | no data yet | `LoadingState` / table skeleton |
+| `isError` | the request failed | `ErrorState` with retry (MSG06) — unless the global handler redirected (401/403) |
+| `isFetching && !isPending` | background refetch (polling, focus) | nothing, or a subtle spinner — never blank the screen |
+| data with 0 items | empty | `EmptyState` with MSG04, or the screen's code (MSG16 Review Queue) |
+
+For mutations: disable the confirm button and show its loading state while `isPending`; never allow a
+double submit.
+
+## 6. Errors and system messages (MSG codes)
+
+### Error contract with the backend
+Every error response is an RFC 9457 **Problem Details** object (Spring's `ProblemDetail`) extended with:
+
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "code": "MSG47",
+  "params": { "department_name": "IT" },
+  "fieldErrors": [{ "field": "jiraProjectKey", "code": "MSG47", "params": { "department_name": "IT" } }]
+}
+```
+
+`http.ts` converts it into `ApiError { status, code: MsgCode, params, fieldErrors }`. A response without
+a known `code` becomes `code: 'MSG06'`. *(This contract is our proposal; the backend must implement it —
+it is recorded in the decision log.)*
+
+### The catalog
+`src/shared/messages/catalog.ts` holds every **active** MSG code from SRS V.2 with its exact English
+text and its display type. Texts are templates (`{count} ticket(s) approved and published.`).
+
+```ts
+msg('MSG02', { field_name: 'Reason', max_length: 1000 })  // → string, for field errors and inline text
+showMessage('MSG18', { count: 3 })                         // → toast (success/info/error by catalog type)
+```
+
+✅ Do: `showMessage('MSG30')`  ❌ Don't: `message.success('Ticket unpublished.')` 🔒 (raw `message` banned)
+
+### Where each message type is shown (SRS V.2 "Loại thông báo")
+
+| SRS type | UI mechanism | Example |
+|---|---|---|
+| Red text under the field | `Form.Item` error (`rules` or server `fieldErrors`) — see [09](09-forms-and-validation.md) | MSG01, MSG02, MSG43, MSG47 |
+| Shown in the page | `EmptyState` / inline `Alert` in the page | MSG04, MSG16, MSG36, MSG86 |
+| Toast | `showMessage(code)` | MSG05, MSG18, MSG20, MSG38 |
+| Confirm dialog | `ConfirmDialog` with the code as its text | MSG19, MSG29, MSG90, MSG92 |
+| Tooltip | `Tooltip title={msg(code)}` | MSG22 |
+
+### Who handles which error
+
+| Error | Handled by | Behaviour |
+|---|---|---|
+| 401 (no or expired session) | global (`query-client.ts`) | MSG07 dialog → `/login`, cache cleared |
+| 403 | global for pages; feature for actions | page → 403 screen with MSG08; action → toast MSG08 |
+| network error / 5xx / unknown code | global | toast MSG06 |
+| business error with a code (4xx) on a **form** | the feature | map `fieldErrors` onto fields; otherwise `showMessage(code)` |
+| business error on a page action (e.g. MSG95 on Finish) | the feature | show where the SRS says (in page or toast) |
+
+To stop the global toast for a mutation that shows its own error, set `meta: { handlesOwnErrors: true }`
+on that mutation. Never show two messages for one error.
+
+## 7. Session
+
+`useSession()` (in `shared/auth`) wraps the generated `GET /api/v1/me` query (`staleTime: Infinity`) and
+returns `{ user, role, projects, departments }`. It is the only source of "who am I" — never store the
+user elsewhere. Log out = call the logout endpoint, clear the query cache, go to `/login`.
+
+## 8. Checklist
+
+- [ ] No `fetch`/axios outside `shared/api/http.ts`; no imports from `generated/` paths.
+- [ ] Every mutation invalidates the right generated keys and shows its MSG on success.
+- [ ] Loading, error, empty handled; no blank screen during background refetch.
+- [ ] Every message comes from the catalog, shown by the mechanism its SRS type requires.
+- [ ] Spec + generated code + fixes committed together when the API changed.
+
+---
+*Last verified against code: not yet — generated names, the mutator signature and `meta` flag will be confirmed in Step 5.*

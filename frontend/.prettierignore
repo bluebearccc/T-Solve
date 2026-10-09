@@ -1,0 +1,10 @@
+dist/
+coverage/
+.vitest/
+package-lock.json
+openapi/
+src/shared/api/generated/
+public/mockServiceWorker.js
+
+# Markdown is hand-formatted (compact tables are cheaper for AI agents to load and easier to diff)
+*.md

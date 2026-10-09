@@ -32,11 +32,14 @@
 | FE-22 | Feature list and folder structure | Approved |
 | FE-23 | Reference feature: Review Queue | Approved |
 | FE-24 | Not adopted | Approved |
+| FE-25 | ESLint 10, no accessibility lint plugin | Approved — supersedes the ESLint part of FE-01 |
+| FE-26 | Import boundaries with import-x instead of eslint-plugin-boundaries | Approved — supersedes the tool in FE-14 |
+| FE-27 | Prettier does not format Markdown | Approved |
 
 ---
 
 **FE-01 — Library versions.** React 19.3 · Vite 8 · antd 6 · TanStack Query 5 · orval 8 · React Router 8 ·
-Vitest 5 · MSW 3 · **TypeScript 6.0** · **ESLint 9.39**.
+Vitest 5 · MSW 3 · **TypeScript 6.0** · ESLint 9.39 *(ESLint superseded by FE-25)*.
 *Options:* latest majors everywhere (TypeScript 7, ESLint 10). *Why:* on 2026-10-09 `typescript-eslint`
 supports TypeScript < 6.1 and TypeScript 7.0 has no stable compiler API until 7.1; `eslint-plugin-jsx-a11y`
 does not declare ESLint 10 support, so `npm ci` would fail on the peer dependency. Revisit when both are fixed.
@@ -99,11 +102,12 @@ part-time MVP. Closes DevOps design open item #3 (Vitest vs Jest).
 
 **FE-13 — Path alias.** Only `@/` → `src/`. *Why:* one rule to remember; relative imports inside a feature.
 
-**FE-14 — Import boundaries.** `eslint-plugin-boundaries`: `app → features → shared`; another feature only via
+**FE-14 — Import boundaries.** ESLint rule *(tool superseded by FE-26)*: `app → features → shared`; another feature only via
 its `index.ts`; allowed cross-feature pairs: `tickets → review`, `tickets → feedback`. *Why:* keeps features
 independent so five people can work in parallel; enforced by CI, not memory.
 
-**FE-15 — Node.** Node 24 LTS in `.nvmrc`, CI and Docker; `engines >= 22.22` (React Router 8 minimum).
+**FE-15 — Node.** Node 24 LTS in `.nvmrc`, CI and Docker; `engines` `^22.22.2 || >=24.15.0` (jsdom 30
+minimum, which is stricter than React Router 8's 22.22; corrected during the scaffold).
 *Why:* supported until 2028; covers the whole project.
 
 **FE-16 — Dates.** dayjs (already an antd dependency) with one formatter: `dd/MM/yyyy HH:mm`,
@@ -138,6 +142,28 @@ a form popup, MSG toasts and empty state — every pattern the team needs.
 **FE-24 — Not adopted.** React Compiler, Storybook (a dev-only `/dev/kit` page instead), an i18n library
 (UI is English-only), Nx/Turbo, Redux, optimistic updates. **Deferred:** chart library for the Knowledge
 Dashboard (choose when that feature starts, checking antd 6 compatibility).
+
+**FE-25 — ESLint 10, no accessibility lint (2026-10-09, during the scaffold).** ESLint 10.12 without any
+a11y plugin. *Options:* stay on ESLint 9 (end-of-life: npm marks it unsupported); ESLint 10 +
+`eslint-plugin-jsx-a11y-x` (maintained fork). *Why:* the only reason for ESLint 9 was
+`eslint-plugin-jsx-a11y` (no release since Oct 2024, no ESLint 10 support); the FE Lead removed the
+accessibility NFR from the SRS, so the plugin is not needed. Semantic HTML basics stay as good practice
+([05](05-react-components.md) §3). Supersedes the ESLint part of FE-01.
+
+**FE-26 — Import boundaries with import-x (2026-10-09).** `eslint-plugin-import-x` rule
+`no-restricted-paths` with six zones (guideline 11 §2), plus `eslint-import-resolver-typescript`.
+*Options:* `eslint-plugin-boundaries` 7.2 (pins `handlebars` 4.7.9 — critical advisory — and
+`micromatch` → `braces` — high, no fixed version; an `overrides` entry could fix only the first);
+`dependency-cruiser` (0 advisories, but a separate CLI: no editor feedback, own config language, extra CI step);
+`eslint-plugin-project-structure` (same `braces` advisory); built-in `no-restricted-imports` (cannot see
+relative paths that cross features). *Why:* import-x resolves real file paths, so `@/…` and `../../…` deep
+imports are both caught; it supports ESLint 10, is actively maintained, and `npm audit` reports 0
+vulnerabilities. Tested on the scaffold: every forbidden import fails, every allowed one passes — and it adds
+two checks the old setup lacked (features → `app/`, non-test code → test helpers). Supersedes the tool named in FE-14.
+
+**FE-27 — Prettier does not format Markdown (2026-10-09).** `*.md` is in `.prettierignore`. *Why:* Prettier
+pads every Markdown table to equal column widths — each small doc edit becomes a whole-table diff, and the
+padding adds tokens every time an AI agent loads the guidelines.
 
 ## Working conventions (not code decisions)
 

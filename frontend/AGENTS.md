@@ -68,6 +68,7 @@ Each rule is enforced by a tool where possible (marked 🔒). Details and exampl
 | `npm run typecheck` | `tsc` with no output. |
 | `npm run test` / `test:watch` | Vitest, once / in watch mode. |
 | `npm run generate:api` | Regenerates the API client from `openapi/tsolve-api.yaml`. |
+| `npm run api:pull` | Downloads the spec from a locally running backend into `openapi/tsolve-api.yaml`. |
 
 ## Guidelines — reading order
 

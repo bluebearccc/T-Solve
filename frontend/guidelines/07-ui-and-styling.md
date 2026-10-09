@@ -1,0 +1,153 @@
+# 07 · UI & styling (Figma kit v4)
+
+> **Applies to:** every screen and every file in `src/shared/ui/`, `src/app/layout/`, `src/app/theme/`
+> and any `*.module.css`.
+> **Why it matters:** the Figma file is the design system. If code mirrors it one-to-one, a teammate (or an
+> AI agent) looking at a Figma frame knows exactly which components to use, and every screen looks the same.
+
+## 1. Sources of truth
+
+- **Figma file:** "T-Solve UI Design" — page `00 Cover · Design System`:
+  - section **STYLES · Colour, text, effect** → theme tokens (§2)
+  - section **WEB COMPONENTS · Web/… (Ant Design-aligned)** → kit components (§3) — *the only source of truth*
+  - section **CANDIDATES** → ignored until the FE Lead promotes a component into the kit
+  - section **JIRA APP COMPONENTS** → not used here (Jira App is a separate app)
+- **Screens:** page `01 Web App`, frames named `<number> <screen name> - Hiếu` (e.g. `7.1 Review Queue - Hiếu`).
+  The number matches the SRS III section and the page file's header comment.
+- **Labels and texts:** the SRS field tables. Button labels, column names and screen titles are copied
+  exactly ("Send back to queue", not "Send Back" or "Requeue").
+
+## 2. Theme tokens (`src/app/theme/theme.ts`)
+
+All colours, fonts and shadows are set **once** as antd tokens. antd 6 exposes every token as a CSS
+variable (`--ant-color-primary`, `--ant-color-border`, …), so CSS Modules use the same values.
+
+| Figma style | antd token | Value |
+|---|---|---|
+| brand/primary · brand/primary-hover · brand/primary-bg | `colorPrimary` · `colorPrimaryHover` · `colorPrimaryBg` | #5577FF · #7792FF · #EEF1FF |
+| info · info-bg · info-border | `colorInfo` · `colorInfoBg` · `colorInfoBorder` | #5577FF · #EEF1FF · #BBC9FF |
+| success · success-bg · success-border | `colorSuccess` · `colorSuccessBg` · `colorSuccessBorder` | #52C41A · #F6FFED · #B7EB8F |
+| warning · warning-bg · warning-border | `colorWarning` · `colorWarningBg` · `colorWarningBorder` | #FAAD14 · #FFFBE6 · #FFE58F |
+| error · error-hover · error-bg · error-border | `colorError` · `colorErrorHover` · `colorErrorBg` · `colorErrorBorder` | #FF4D4F · #FF7875 · #FFF2F0 · #FFCCC7 |
+| text/primary · text/secondary · text/inverse | `colorText` · `colorTextSecondary` · `colorTextLightSolid` | #060606 · #8E92BC · #FFFFFF |
+| border · border/secondary | `colorBorder` · `colorBorderSecondary` | #D0D5DD · #F0F0F0 |
+| bg/container · bg/subtle | `colorBgContainer` · `colorFillAlter` | #FFFFFF · #FAFAFA |
+| Body (Inter 14/22) · Small (12/20) | `fontFamily`, `fontSize` · `fontSizeSM` | Inter 14 · 12 |
+| H1 24/32 · H2 20/28 · H3 16/24 (Semi Bold) | `fontSizeHeading1` · `fontSizeHeading2` · `fontSizeHeading3` | 24 · 20 · 16 |
+| Number (30/38) | `StatCard` value size | 30 |
+| shadow/card · shadow/popup | `boxShadowTertiary` · `boxShadowSecondary` | per Figma |
+| focus-ring (#5577FF26, spread 2) | `controlOutline` · `controlOutlineWidth` | primary at 15 % · 2 |
+
+Not taken from Figma (placeholder values there): `text/disabled`, `bg/disabled`, `bg/hover`, `bg/layout`,
+`bg/tooltip` → **antd defaults** (decision log). Font: Inter, self-hosted with `@fontsource/inter`.
+
+Heading tokens are mapped so that `<Typography.Title level={1}>` **is** Figma H1 — one heading scale, no
+custom font sizes.
+
+## 3. Kit components (`src/shared/ui/`)
+
+Each "Web/…" component maps to exactly one thing in code. Props mirror the Figma variant properties
+(`Status=Published` → `status="PUBLISHED"`, `Kind=Stat` → `<StatCard>`).
+
+| Figma component | Code | Notes |
+|---|---|---|
+| Web/Button (Primary/Default/Text/Link/Danger × states) | antd `Button` (`type`, `danger`, `loading`, `disabled`) | no wrapper; states come from antd |
+| Web/Checkbox · Web/Tooltip · Web/Tabs · Web/Pagination · Web/Alert · Web/Descriptions | antd `Checkbox` · `Tooltip` · `Tabs` (`items`) · (inside `DataTable`) · `Alert` · `Descriptions` | tokens only |
+| Web/Toast (Success/Error/Info) | `showMessage(code)` from `@/shared/messages` | never antd `message` directly |
+| Web/Form Field (Input/TextArea/Select/Date range/Search × states) | `FormField` + antd inputs | see [09](09-forms-and-validation.md) |
+| Web/Status Tag | `StatusTag` (`status` prop, typed union) | colours and labels defined only here |
+| Web/Table (Header Cell, Cell Kind=Text/Link/Tag/Actions/Checkbox) + Web/Pagination | `DataTable` + `cells.text/link/tag/actions` | 20 rows/page, sortable, row selection, empty/loading/error built in |
+| Web/Empty & Loading | `EmptyState` (`code`, default MSG04) · `LoadingState` · `ErrorState` | |
+| Web/Card (Kind=Section / Stat) | `SectionCard` · `StatCard` | |
+| Web/Modal (Confirm / Danger confirm) + Header/Footer | `ConfirmDialog` (`code`, `danger`) · `FormModal` | |
+| Web/Upload (Idle/Dragging/File listed/File error) | `EvidenceUpload` · `CsvUpload` | limits and MSG40/MSG62/MSG33/MSG34 built in |
+| Web/App Shell (Role=4) + Web/Menu Item | `app/layout/AppShell` + `SideMenu` | §5 |
+| Icons (Ant Design Icons) | `@ant-design/icons`, same names (`Icon/Inbox` → `InboxOutlined`) | |
+| *(part of every screen frame, no own component)* | `PageHeader` · `AppForm` | screen title + actions · antd `Form` with our defaults ([09](09-forms-and-validation.md)) |
+
+**StatusTag values** (exactly these 15 — the Figma variants Deferred, Running and Succeeded are retired):
+Pending review · Changes requested · Published · Rejected · Unpublished · Expired · Active · Deactivated ·
+Removed · Connected · Not connected · Completed · Failed · Valid · Error.
+
+**`/dev/kit` page** (dev builds only): every kit component in every variant on one page. Use it to compare
+with the Figma section side by side and to find what already exists.
+
+## 4. Rules
+
+### U1 — Build screens from kit components and antd primitives only.
+Banned outside `shared/ui/` 🔒 (`no-restricted-imports`): antd `Tag`, `Table`, `Modal` (incl.
+`Modal.confirm`), `Upload`, `message`, `notification`. The lint message names the kit replacement.
+*Why:* those are exactly the components whose T-Solve version adds rules (status colours, 20-row
+pagination, MSG texts, upload limits). Using the raw one silently skips the rules.
+
+### U2 — Lay out with antd first (`Flex`, `Space`, `Row`/`Col`, `Card`), CSS second.
+
+```tsx
+// ✅ Do
+<Flex justify="space-between" align="center" gap="middle">…</Flex>
+
+// ❌ Don't
+<div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>…</div>
+```
+
+### U3 — Custom CSS only in a CSS Module next to its component, using token variables.
+
+```css
+/* ReviewQueueTable.module.css */
+.selectionBar {
+  padding: var(--ant-padding-sm) var(--ant-padding);
+  background: var(--ant-color-primary-bg);
+  border-radius: var(--ant-border-radius);
+}
+```
+
+```tsx
+import styles from './ReviewQueueTable.module.css';
+<div className={styles.selectionBar}>…</div>
+```
+
+- ❌ No hex/rgb colours, no pixel font sizes — use `var(--ant-…)`.
+- ❌ No `style={{…}}` except for values computed at runtime (e.g. a chart width).
+- ❌ No global CSS, no `:global(.ant-…)` overrides, no `!important`. antd 6 changed many internal DOM
+  structures; selectors on `.ant-*` internals break on upgrades. If a kit component needs a tweak, the
+  FE Lead adds it in `shared/ui` (antd's `classNames`/`styles` props).
+- *Why:* CSS Modules scope class names automatically, so two features can both write `.toolbar` without
+  clashing — no naming scheme to remember, no cross-feature conflicts.
+
+### U4 — One screen = one `PageHeader` + content.
+`PageHeader` (kit) shows the screen title exactly as in the SRS (e.g. "Review Queue") and optional
+primary actions on the right. Filters go in a toolbar row under it; the main table or cards below.
+
+### U5 — Text and formatting.
+UI text is English, copied from the SRS. Dates use `formatDate` / `formatDateTime` (dd/MM/yyyy HH:mm,
+UTC+7). Required fields show `*` (antd does this via `required` rules). Status text only via `StatusTag`.
+
+### U6 — Desktop only, minimum 1366 × 768.
+No mobile or tablet layouts in the MVP (NFR). Test every screen at 1366 × 768 — tables may scroll
+horizontally, the menu may not collapse below that.
+
+## 5. App shell and menus
+
+`AppShell` (Figma "Web/App Shell") = left side menu (220 px, "Web/Menu Item") + top bar (product name,
+user menu with **My Profile** and **Log out**) + content area. One shell for all roles; the menu items come
+from `app/layout/menu-config.ts`, pre-filled with the approved menus (landing page first):
+
+| Role | Menu |
+|---|---|
+| Staff | Search · Ticket List |
+| Project Manager | Review Queue · Review History · Expired Tickets · Search · Ticket List · Import Tickets · Import History · Knowledge Dashboard · Jira Integration |
+| Department Manager | Knowledge Dashboard · Search · Ticket List · Jira Integration |
+| Admin | User List · Workspace Settings · Jira Integration · Audit Log · Knowledge Dashboard |
+
+The selected item follows the current route (detail screens highlight their list's item, e.g. Ticket
+Detail → Ticket List). Menu changes need a UI-decision change first — they are not a feature's choice.
+
+## 6. Checklist
+
+- [ ] Every element on the Figma frame maps to a kit component or antd primitive.
+- [ ] No banned antd imports, no hex colours, no inline layout styles, no `.ant-*` overrides.
+- [ ] Title, labels and buttons match the SRS text exactly.
+- [ ] Looks right at 1366 × 768.
+
+---
+*Last verified against code: not yet — token names, CSS variable names and kit props will be checked in Step 5.*

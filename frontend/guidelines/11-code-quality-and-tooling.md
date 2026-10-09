@@ -24,13 +24,13 @@ Run the first four before every push: `npm run lint && npm run typecheck && npm 
 ## 2. ESLint (flat config, ESLint 10)
 
 Plugins: `typescript-eslint` (type-aware), `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`,
-`eslint-plugin-boundaries` (+ `eslint-import-resolver-typescript` so it understands `@/` and `.ts`),
+`eslint-plugin-import-x` (+ `eslint-import-resolver-typescript` so it understands `@/` and `.ts`),
 `@tanstack/eslint-plugin-query`, and `eslint-config-prettier` last (turns off rules Prettier handles).
 No accessibility plugin (the accessibility NFR was removed — decision log FE-25).
 
 | Rule | Level | Why |
 |---|---|---|
-| `boundaries/dependencies` | error | One rule for the whole architecture ([01](01-project-structure.md)): `app → features → shared`; `shared` never imports `features`/`app`; another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES` in `eslint.config.js`); `src/mocks` may import each feature's `mocks/`; test files may import `src/test` and `src/mocks`. Imports inside one feature are free. |
+| `import-x/no-restricted-paths` | error | The architecture ([01](01-project-structure.md)), as six zones in `eslint.config.js`: a feature imports another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES`); features never import `app/`; `shared` never imports `features`, `app` or `mocks`; `app` uses a feature only through its `index.ts`; `src/mocks` imports only features' `mocks/`; only test files import `src/test` and `src/mocks`. Imports inside one feature are free. The feature list is read from `src/features/`, so a new feature folder is covered automatically. |
 | `no-restricted-imports` (antd `Tag`, `Table`, `Modal`, `Upload`, `message`, `notification` outside `shared/ui`) | error | Use the kit component ([07](07-ui-and-styling.md) U1). The error message names it. |
 | `no-restricted-imports` (`@/shared/api/generated/*`, `react-router-dom`, `axios`) | error | Import from `@/shared/api`; v8 has no `react-router-dom`; one HTTP client. |
 | `@typescript-eslint/no-explicit-any`, `ban-ts-comment`, `no-non-null-assertion` | error | [04](04-typescript.md) R1–R3. |
@@ -109,10 +109,8 @@ Use Node from `frontend/.nvmrc` and cache `~/.npm` keyed on `frontend/package-lo
 the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7 is held back on purpose; keep
 `typescript` on `~6.0`).
 
-**`npm audit`:** expect 4 *high* advisories from one chain — `eslint-plugin-boundaries` → `micromatch` →
-`braces` (no fixed `braces` exists). It is lint-time only and processes our own config, never user input or the
-shipped app; accepted in FE-26. Don't run `npm audit fix --force` (it downgrades the plugin). The critical
-`handlebars` advisory is fixed by the `overrides` entry in `package.json`.
+**`npm audit`** should report 0 vulnerabilities. If it doesn't, tell the FE Lead before adding an
+`overrides` entry or running `npm audit fix --force` (which can silently downgrade packages).
 
 ## 6. Build and Docker
 

@@ -1,7 +1,9 @@
 // ESLint flat config — every rule here is explained in guidelines/11-code-quality-and-tooling.md.
 // Owner: FE Lead. Do not change it in a feature PR.
 import js from '@eslint/js';
-import boundaries from 'eslint-plugin-boundaries';
+import { existsSync, readdirSync } from 'node:fs';
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
+import importX from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import prettier from 'eslint-config-prettier';
@@ -17,13 +19,61 @@ const ALLOWED_FEATURE_DEPENDENCIES = {
   tickets: ['review', 'feedback'],
 };
 
-const featureIndex = (featureNames) => ({
-  element: {
-    type: 'feature',
-    captured: { featureName: featureNames },
-    fileInternalPath: 'index.{ts,tsx}',
+/** Every folder in src/features is a feature; new features are picked up automatically. */
+const FEATURES_DIR = new URL('./src/features', import.meta.url);
+const FEATURES = existsSync(FEATURES_DIR)
+  ? readdirSync(FEATURES_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+  : [];
+
+const BOUNDARY_HELP = 'See guidelines/01-project-structure.md §4–5.';
+
+/** Zones for import-x/no-restricted-paths: "files in target may not import from from (except …)". */
+const boundaryZones = [
+  // A feature may import another feature only through its index.ts, and only for the allowed pairs.
+  ...FEATURES.map((feature) => ({
+    target: `./src/features/${feature}`,
+    from: './src/features',
+    except: [
+      `./${feature}`,
+      ...(ALLOWED_FEATURE_DEPENDENCIES[feature] ?? []).map((t) => `./${t}/index.ts`),
+    ],
+    message: `Feature "${feature}" may import another feature only through its index.ts, and only the allowed pairs (eslint.config.js). ${BOUNDARY_HELP}`,
+  })),
+  // Features never import app.
+  {
+    target: './src/features',
+    from: './src/app',
+    message: `Features never import app/. ${BOUNDARY_HELP}`,
   },
-});
+  // shared never imports features, app or mocks.
+  {
+    target: './src/shared',
+    from: ['./src/features', './src/app', './src/mocks'],
+    message: `shared/ never imports features/, app/ or mocks/. ${BOUNDARY_HELP}`,
+  },
+  // app uses a feature only through its index.ts (route registration).
+  {
+    target: './src/app',
+    from: './src/features',
+    except: FEATURES.map((feature) => `./${feature}/index.ts`),
+    message: `app/ imports a feature only through its index.ts. ${BOUNDARY_HELP}`,
+  },
+  // mocks/ reads each feature's mocks/ folder only.
+  {
+    target: './src/mocks',
+    from: './src/features',
+    except: FEATURES.map((feature) => `./${feature}/mocks`),
+    message: `src/mocks imports only features' mocks/ folders. ${BOUNDARY_HELP}`,
+  },
+  // Only test files may use the test helpers and the mock server.
+  {
+    target: 'src/{app,features,shared}/**/!(*.test).{ts,tsx}',
+    from: ['src/test/**/*', 'src/mocks/**/*'],
+    message: `Only *.test.ts(x) files may import src/test or src/mocks. ${BOUNDARY_HELP}`,
+  },
+];
 
 export default defineConfig([
   globalIgnores(['dist', 'coverage', '.vitest', 'public', 'src/shared/api/generated']),
@@ -68,67 +118,13 @@ export default defineConfig([
   // ---- Import boundaries (guideline 01) -------------------------------------------------------
   {
     files: ['src/**/*.{ts,tsx}'],
-    plugins: { boundaries },
+    plugins: { 'import-x': importX },
     settings: {
-      'import/resolver': { typescript: { alwaysTryTypes: true, project: './tsconfig.app.json' } },
-      'boundaries/elements': [
-        { type: 'app', pattern: 'src/app' },
-        { type: 'feature', pattern: 'src/features/*', capture: ['featureName'] },
-        { type: 'shared', pattern: 'src/shared/*', capture: ['segment'] },
-        { type: 'mocks', pattern: 'src/mocks' },
-        { type: 'test', pattern: 'src/test' },
-      ],
-      'boundaries/files': [{ category: 'test', pattern: '**/*.test.{ts,tsx}' }],
-    },
-    rules: {
-      'boundaries/dependencies': [
-        'error',
-        {
-          default: 'disallow',
-          message:
-            'Import not allowed: {{from.element.type}}{{#if from.element.captured.featureName}} "{{from.element.captured.featureName}}"{{/if}} → {{to.element.type}}{{#if to.element.captured.featureName}} "{{to.element.captured.featureName}}"{{/if}}. Features import other features only through index.ts (allowed pairs only); shared never imports features or app. See guidelines/01-project-structure.md §1, §4–5.',
-          policies: [
-            // Inside one element (same feature, same shared segment, app, mocks, test) anything goes.
-            { allow: { dependency: { relationship: { to: 'internal' } } } },
-            // shared → shared only.
-            {
-              from: { element: { type: 'shared' } },
-              allow: { to: { element: { type: 'shared' } } },
-            },
-            // feature → shared, and the allowed features through their index.ts only.
-            {
-              from: { element: { type: 'feature' } },
-              allow: { to: { element: { type: 'shared' } } },
-            },
-            ...Object.entries(ALLOWED_FEATURE_DEPENDENCIES).map(([from, targets]) => ({
-              from: { element: { type: 'feature', captured: { featureName: from } } },
-              allow: { to: featureIndex(targets) },
-            })),
-            // app → shared and any feature's index.ts (route registration).
-            {
-              from: { element: { type: 'app' } },
-              allow: { to: [{ element: { type: 'shared' } }, featureIndex('*')] },
-            },
-            // mocks → shared and each feature's mocks/handlers.ts (kept out of the production bundle).
-            {
-              from: { element: { type: 'mocks' } },
-              allow: {
-                to: [
-                  { element: { type: 'shared' } },
-                  { element: { type: 'feature', fileInternalPath: 'mocks/**' } },
-                ],
-              },
-            },
-            // Test helpers (src/test) → anything; test files → test helpers and mock server.
-            { from: { element: { type: 'test' } }, allow: { to: { element: { type: '*' } } } },
-            {
-              from: { file: { categories: 'test' } },
-              allow: { to: [{ element: { type: 'test' } }, { element: { type: 'mocks' } }] },
-            },
-          ],
-        },
+      'import-x/resolver-next': [
+        createTypeScriptImportResolver({ project: './tsconfig.app.json' }),
       ],
     },
+    rules: { 'import-x/no-restricted-paths': ['error', { zones: boundaryZones }] },
   },
 
   // ---- Banned imports (guidelines 06, 07, 11) ------------------------------------------------

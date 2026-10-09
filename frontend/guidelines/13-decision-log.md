@@ -33,7 +33,7 @@
 | FE-23 | Reference feature: Review Queue | Approved |
 | FE-24 | Not adopted | Approved |
 | FE-25 | ESLint 10, no accessibility lint plugin | Approved — supersedes the ESLint part of FE-01 |
-| FE-26 | Advisories in eslint-plugin-boundaries | Approved |
+| FE-26 | Import boundaries with import-x instead of eslint-plugin-boundaries | Approved — supersedes the tool in FE-14 |
 | FE-27 | Prettier does not format Markdown | Approved |
 
 ---
@@ -102,7 +102,7 @@ part-time MVP. Closes DevOps design open item #3 (Vitest vs Jest).
 
 **FE-13 — Path alias.** Only `@/` → `src/`. *Why:* one rule to remember; relative imports inside a feature.
 
-**FE-14 — Import boundaries.** `eslint-plugin-boundaries`: `app → features → shared`; another feature only via
+**FE-14 — Import boundaries.** ESLint rule *(tool superseded by FE-26)*: `app → features → shared`; another feature only via
 its `index.ts`; allowed cross-feature pairs: `tickets → review`, `tickets → feedback`. *Why:* keeps features
 independent so five people can work in parallel; enforced by CI, not memory.
 
@@ -150,13 +150,16 @@ a11y plugin. *Options:* stay on ESLint 9 (end-of-life: npm marks it unsupported)
 accessibility NFR from the SRS, so the plugin is not needed. Semantic HTML basics stay as good practice
 ([05](05-react-components.md) §3). Supersedes the ESLint part of FE-01.
 
-**FE-26 — Advisories in eslint-plugin-boundaries (2026-10-09).** `eslint-plugin-boundaries` 7.2 pins
-`handlebars` 4.7.9 (critical) and `micromatch` → `braces` (high, no fixed version exists). We force
-`handlebars ^4.7.10` with an npm `overrides` entry and accept the `braces` advisory. *Options:* replace the
-plugin with `no-restricted-imports` (cannot see relative paths that cross features); accept both.
-*Why:* both packages only run at lint time on our own config, never on user input or in the shipped app.
-Revisit when the plugin updates its dependencies. Also adds `eslint-import-resolver-typescript` (the plugin
-needs it to resolve `@/` and `.ts` imports).
+**FE-26 — Import boundaries with import-x (2026-10-09).** `eslint-plugin-import-x` rule
+`no-restricted-paths` with six zones (guideline 11 §2), plus `eslint-import-resolver-typescript`.
+*Options:* `eslint-plugin-boundaries` 7.2 (pins `handlebars` 4.7.9 — critical advisory — and
+`micromatch` → `braces` — high, no fixed version; an `overrides` entry could fix only the first);
+`dependency-cruiser` (0 advisories, but a separate CLI: no editor feedback, own config language, extra CI step);
+`eslint-plugin-project-structure` (same `braces` advisory); built-in `no-restricted-imports` (cannot see
+relative paths that cross features). *Why:* import-x resolves real file paths, so `@/…` and `../../…` deep
+imports are both caught; it supports ESLint 10, is actively maintained, and `npm audit` reports 0
+vulnerabilities. Tested on the scaffold: every forbidden import fails, every allowed one passes — and it adds
+two checks the old setup lacked (features → `app/`, non-test code → test helpers). Supersedes the tool named in FE-14.
 
 **FE-27 — Prettier does not format Markdown (2026-10-09).** `*.md` is in `.prettierignore`. *Why:* Prettier
 pads every Markdown table to equal column widths — each small doc edit becomes a whole-table diff, and the

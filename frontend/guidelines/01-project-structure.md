@@ -1,0 +1,167 @@
+# 01 · Project structure
+
+> **Applies to:** everything in `frontend/`.
+> **Why it matters:** five people build features at the same time. A fixed place for every kind of file
+> means people rarely edit the same file, reviewers know where to look, and AI agents don't invent folders.
+
+## 1. The folder tree
+
+```
+frontend/
+├── AGENTS.md · CLAUDE.md · README.md
+├── guidelines/                      # these files
+├── openapi/tsolve-api.yaml          # API spec, committed (input of orval)
+├── public/                          # static files copied as-is (favicon, mockServiceWorker.js)
+├── src/
+│   ├── main.tsx                     # starts mocks (if enabled) and renders <App />
+│   ├── app/                         # WIRING ONLY — owner: FE Lead
+│   │   ├── App.tsx
+│   │   ├── providers/               # AppProviders: antd ConfigProvider + App, QueryClientProvider
+│   │   ├── router/                  # router.tsx, feature-routes.ts, RequireAuth, RequireRole
+│   │   ├── layout/                  # AppShell, SideMenu, UserMenu, menu-config.ts
+│   │   ├── theme/                   # theme.ts (antd tokens from Figma STYLES)
+│   │   └── pages/                   # ForbiddenPage (403), NotFoundPage (404)
+│   ├── features/                    # BUSINESS SCREENS — owner: the feature's developer
+│   │   └── <feature>/               # see §3
+│   ├── shared/                      # REUSABLE, NO BUSINESS FLOW — owner: FE Lead
+│   │   ├── ui/                      # Figma kit v4 components (StatusTag, DataTable, FormField…)
+│   │   ├── api/                     # http.ts (fetch wrapper), errors.ts, query-client.ts
+│   │   │   └── generated/           # orval output — NEVER EDIT
+│   │   ├── auth/                    # useSession, Role, landing page per role
+│   │   ├── messages/                # MSG catalog (SRS V.2) + showMessage / msg helpers
+│   │   ├── forms/                   # validation rule builders
+│   │   ├── routing/paths.ts         # every screen path
+│   │   ├── lib/                     # tiny pure helpers (date.ts, …)
+│   │   └── config/env.ts            # typed access to import.meta.env
+│   ├── mocks/                       # MSW setup: browser.ts, server.ts, handlers.ts
+│   └── test/                        # test setup and renderWithProviders
+├── .env.example · .nvmrc · .prettierrc · eslint.config.js · orval.config.ts
+├── tsconfig*.json · vite.config.ts · package.json · package-lock.json
+└── Dockerfile · .dockerignore · Caddyfile
+```
+
+Dependency direction (enforced by ESLint, see [11](11-code-quality-and-tooling.md)):
+
+```
+app  ──►  features  ──►  shared
+ └──────────────────────►  shared
+features/x ──► features/y   only through features/y/index.ts, only for the pairs in §5
+shared ──► (nothing in app or features)
+```
+
+## 2. What goes where
+
+| I need to add… | Put it in |
+|---|---|
+| A new screen (a Figma frame) | `features/<feature>/pages/<ScreenName>Page.tsx` |
+| A popup (a Figma "(popup)" frame) | `features/<feature>/components/<Name>Modal.tsx` |
+| A part used by one feature only | `features/<feature>/components/` |
+| A hook that calls the API | `features/<feature>/hooks/` (wraps a generated hook) |
+| Realistic mock data for my screens | `features/<feature>/mocks/handlers.ts` |
+| A component from the Figma kit ("Web/…") | `shared/ui/` — FE Lead PR, see [02](02-conflict-avoidance.md) |
+| A pure helper used by 2+ features (no React, no API) | `shared/lib/` — FE Lead PR |
+| A new MSG code or text | Nowhere — MSG texts come from the SRS. Ask the FE Lead. |
+| An API type | Nowhere — it is generated. Change the spec, run `npm run generate:api`. |
+| Global state | Nowhere — see [06](06-data-layer.md). |
+
+**Rule:** start inside your feature. Something moves to `shared/` only when a **second** feature needs
+it ("rule of two"). *Why:* early sharing creates coupling and review load; duplicated code in two
+features is cheaper to merge later than a wrong shared abstraction is to undo.
+
+## 3. Inside a feature folder
+
+```
+features/review/
+├── index.ts                    # PUBLIC API — the only file others may import
+├── routes.tsx                  # route objects for this feature's screens
+├── pages/
+│   ├── ReviewQueuePage.tsx     # 7.1
+│   ├── ReviewHistoryPage.tsx   # 7.4
+│   └── ExpiredTicketsPage.tsx  # 7.5
+├── components/
+│   ├── ReviewQueueTable.tsx
+│   ├── RejectTicketModal.tsx   # 7.3 (popup)
+│   └── RequestChangesModal.tsx # 7.2 (popup)
+├── hooks/
+│   ├── useReviewQueue.ts
+│   └── useApproveTickets.ts
+├── mocks/handlers.ts
+└── ReviewQueuePage.test.tsx    # tests sit next to what they test
+```
+
+- Create only the sub-folders you need. A tiny feature may have just `index.ts`, `routes.tsx` and `pages/`.
+- No `utils/` or `helpers/` dump folders. A helper used by one component lives in that component's file;
+  a helper used across the feature gets a named file (`hooks/`, or a clearly named `.ts` next to its user).
+- No feature-level `types.ts` for API shapes — they are generated. UI-only types sit next to the
+  component that owns them.
+- Every page file starts with a one-line comment naming its SRS screen, e.g.
+  `/** 7.1 Review Queue — SRS III.7.1 */`. *Why:* traceability from code to SRS and Figma.
+
+## 4. The public-API rule
+
+Other code may import a feature **only through its `index.ts`**. `index.ts` exports the feature's
+`routes` and, if another feature needs it, a few named components or hooks — nothing else.
+
+```ts
+// features/review/index.ts
+export { reviewRoutes } from './routes';
+export { TicketDecisionActions } from './components/TicketDecisionActions'; // used by Ticket Detail
+```
+
+✅ Do
+
+```ts
+// features/tickets/pages/TicketDetailPage.tsx
+import { TicketDecisionActions } from '@/features/review';
+```
+
+❌ Don't
+
+```ts
+import { TicketDecisionActions } from '@/features/review/components/TicketDecisionActions';
+import { useApproveTickets } from '../../review/hooks/useApproveTickets';
+```
+
+*Why:* the owner of `review` can rename, split or rewrite anything inside the folder without breaking
+other features. Only `index.ts` is a promise to the rest of the app. ESLint fails the build on deep
+imports (`boundaries/entry-point`). Two exceptions, both enforced by the same lint config:
+`app/router/feature-routes.ts` imports `routes` from each `index.ts` (normal), and `src/mocks/handlers.ts`
+imports each feature's `mocks/handlers.ts` directly so mock code never ships in the production bundle.
+
+## 5. The 12 features
+
+| Feature folder | Screens (SRS III) | Roles | May import (via index) |
+|---|---|---|---|
+| `auth` | 1.1.1 Login | Guest | — |
+| `my-profile` | 1.2.1 My Profile | all signed-in | — |
+| `users` | 1.3.1 User List · 1.3.2 User Detail | Admin | — |
+| `workspace` | 2.1 Workspace Settings · 2.2 Department Detail · 2.3 Delete Department (popup) | Admin | — |
+| `jira-integration` | 3.1 Jira Integration · 3.2 Project Detail | Admin, Department Manager, Project Manager (3.1) · Project Manager (3.2) | — |
+| `ticket-import` | 5.1 Import Tickets · 5.2 Import Preview · 5.3 Import Ticket Preview (popup) · 5.4 Import History | Project Manager | — |
+| `tickets` | 5.5 Ticket Detail · 6.2 Ticket List | Staff, Project Manager, Department Manager | `review`, `feedback` |
+| `search` | 6.1 Search | Staff, Project Manager, Department Manager | — |
+| `review` | 7.1 Review Queue · 7.2 Request Changes (popup) · 7.3 Reject Ticket (popup) · 7.4 Review History · 7.5 Expired Tickets | Project Manager | — |
+| `feedback` | 8.1 Give Feedback (popup) [Web] | Staff, Project Manager, Department Manager | — |
+| `knowledge-dashboard` | 9.1 Knowledge Dashboard | Department Manager, Project Manager, Admin | — |
+| `audit-log` | 9.2 Audit Log · 9.3 Audit Entry Detail (popup) | Admin | — |
+
+Paths per screen are in [08](08-routing-and-access.md).
+
+Ownership notes that are easy to get wrong:
+
+- **All review decisions live in `review`**: Approve, Reject, Request changes, Unpublish, Re-publish,
+  Send back to queue. Each one records a Review Decision shown in Review History, so the mutations sit
+  in one place. Ticket Detail shows them through `TicketDecisionActions` from `review`.
+- **Links between features use URLs, not imports.** `review` opens Ticket Detail with
+  `paths.ticketDetail(id)` from `shared/routing/paths.ts`; it never imports `tickets`. *Why:* keeps the
+  dependency graph one-way and free of cycles.
+- Need a new cross-feature dependency? Ask the FE Lead; it is added to the table above and to the lint config.
+
+## 6. Folders that must not appear
+
+`src/components/`, `src/pages/`, `src/hooks/`, `src/utils/`, `src/services/`, `src/store/`,
+`src/types/` at the top level. *Why:* they collect unrelated code from every feature — exactly the
+files everyone ends up editing at once.
+
+---
+*Last verified against code: not yet — written before the scaffold (Step 5 will verify paths and lint rule names).*

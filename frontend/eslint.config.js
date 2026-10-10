@@ -117,6 +117,9 @@ const BANNED_PACKAGES = [
   { name: 'axios', message: 'All HTTP goes through @/shared/api (guideline 06).' },
 ];
 
+const FETCH_MESSAGE =
+  'Call the API through the generated hooks from @/shared/api; only shared/api/http.ts uses fetch (guideline 06).';
+
 const GENERATED_IMPORTS = {
   group: ['@/shared/api/generated', '@/shared/api/generated/*'],
   message: 'Import API hooks and types from @/shared/api (guideline 06).',
@@ -204,6 +207,19 @@ export default defineConfig([
       'no-restricted-imports': [
         'error',
         { paths: BANNED_PACKAGES, patterns: [GENERATED_IMPORTS, MOCK_ONLY_IMPORTS] },
+      ],
+    },
+  },
+  // One HTTP layer: only shared/api/http.ts (orval's mutator) calls fetch (guideline 06 §2).
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/api/http.ts', ...MOCK_AND_TEST_FILES],
+    rules: {
+      'no-restricted-globals': ['error', { name: 'fetch', message: FETCH_MESSAGE }],
+      'no-restricted-properties': [
+        'error',
+        { object: 'window', property: 'fetch', message: FETCH_MESSAGE },
+        { object: 'globalThis', property: 'fetch', message: FETCH_MESSAGE },
       ],
     },
   },

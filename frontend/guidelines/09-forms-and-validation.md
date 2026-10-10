@@ -1,7 +1,7 @@
 # 09 · Forms & validation
 
 > **Applies to:** every form, form popup and confirm dialog (`features/*/components/*Modal.tsx`, form pages,
-> `src/shared/forms/`, `src/shared/ui/FormField`, `FormModal`, `ConfirmDialog`, uploads).
+> `src/shared/forms/`, `src/shared/ui/AppForm` (`AppForm`, `FormField`), `FormModal`, `ConfirmDialog`, uploads).
 > **Why it matters:** the NFR asks for required fields marked `*`, checks when leaving a field, errors next
 > to the field, no lost input on failure, and a confirm before hard-to-undo actions. One pattern makes all
 > 25 screens behave that way.
@@ -115,7 +115,8 @@ Single-ticket Approve, Request changes and Send back to queue have no extra conf
 - **Selects:** options from the API (Departments, Project Managers, Projects of the user); never
   hard-code business lists except the fixed enums (roles, statuses, sources).
 - **Search boxes:** antd `Input.Search`; the value goes to the URL (`?q=`) on Enter, not on every keystroke.
-- **Uploads:** `EvidenceUpload` (≤ 5 files, ≤ 10 MB each, PNG/JPG/PDF/DOCX/XLSX/TXT/LOG → MSG40, MSG62)
+- **Uploads** (*not built yet — FE-36; the FE Lead adds them before the first screen that needs them*):
+  `EvidenceUpload` (≤ 5 files, ≤ 10 MB each, PNG/JPG/PDF/DOCX/XLSX/TXT/LOG → MSG40, MSG62)
   and `CsvUpload` (.csv, ≤ 10 MB → MSG33, MSG34). Files are checked when added and sent with the form —
   no automatic upload. Existing Evidence is read-only (never removable).
 
@@ -127,10 +128,10 @@ this); the first invalid field gets focus on submit (`scrollToFirstError`).
 ## 8. Checklist
 
 - [ ] `AppForm` + `FormField`; field names = API property names; form typed with the generated request type.
-- [ ] Every `*` field has `rules.required`; every limited field has `rules.maxLength` + `showCount`.
+- [ ] Every `*` field has `rules.required`; every limited field has `rules.maxLength` + `count={{ show: true, max }}`.
 - [ ] No message text typed by hand; no native `maxLength`.
 - [ ] Submit button loading/disabled while pending; input kept on failure; server field errors mapped.
 - [ ] Confirm dialogs exactly where the table above says.
 
 ---
-*Last verified against code: not yet — `AppForm`, `rules`, `applyApiErrors` and the mutation call shape will be checked in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

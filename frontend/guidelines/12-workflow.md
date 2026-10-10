@@ -20,7 +20,8 @@ Example: Jira issue `TS-57` "6.2 Ticket List" in feature `tickets`.
    `npm run generate:api`. ([06](06-data-layer.md) §2)
 4. **Route:** your screen is already in your feature's `routes.ts` (path, title, roles) with a placeholder
    page — check the roles against the Permission Matrix. The path
-   already exists in `paths.ts`; the menu entry already exists. ([08](08-routing-and-access.md))
+   already exists in `paths.ts`; list screens already have their menu entry (detail screens have none — they
+   highlight their list). ([08](08-routing-and-access.md))
 5. **Page skeleton:** replace the `ScreenPlaceholder` with a toolbar + the four states (loading / error / empty / data)
    wired to a feature hook. ([05](05-react-components.md) C9)
 6. **Feature hooks** in `hooks/`: wrap the generated hooks; URL search params for filters; invalidation and
@@ -82,4 +83,4 @@ The PR is merged, CI is green, the screen works on staging for every role that c
 has verified it (DevOps §1.4 step 8), and the Jira issue is moved to Done.
 
 ---
-*Last verified against code: not yet — the role switcher and scripts are created in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

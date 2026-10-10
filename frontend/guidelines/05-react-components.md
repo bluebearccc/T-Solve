@@ -153,4 +153,4 @@ tests find elements by role and label ([10](10-testing.md) T1):
 - [ ] No business condition buried inline in JSX.
 
 ---
-*Last verified against code: not yet — kit component names will be checked in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

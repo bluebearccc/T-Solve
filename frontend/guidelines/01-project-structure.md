@@ -18,11 +18,12 @@ frontend/
 │   ├── app/                         # WIRING ONLY — owner: FE Lead (dev/: role switcher, /dev/kit page)
 │   │   ├── App.tsx
 │   │   ├── providers/               # AppProviders (antd + query cache), global-errors.ts (401/403/MSG06)
-│   │   ├── router/                  # routes.tsx (route tree), feature-routes.ts, guards.tsx, router.ts
-│   │   ├── dev/                     # DevRoleSwitcher (dev builds only)
+│   │   ├── router/                  # routes.tsx (route tree), feature-routes.ts, guards.tsx, router.ts,
+│   │   │                            #   RootLayout, FullPageLoading, usePageTitle
+│   │   ├── dev/                     # DevRoleSwitcher, KitPage (/dev/kit) — dev builds only
 │   │   ├── layout/                  # AppShell, SideMenu, UserMenu, menu-config.ts
 │   │   ├── theme/                   # theme.ts (antd tokens from Figma STYLES)
-│   │   └── pages/                   # ForbiddenPage (403), NotFoundPage (404)
+│   │   └── pages/                   # ForbiddenPage (403), NotFoundPage (404), RouteErrorPage, SessionErrorPage
 │   ├── features/                    # BUSINESS SCREENS — owner: the feature's developer
 │   │   └── <feature>/               # see §3
 │   ├── shared/                      # REUSABLE, NO BUSINESS FLOW — owner: FE Lead
@@ -38,8 +39,8 @@ frontend/
 │   │   └── config/env.ts            # typed access to import.meta.env
 │   ├── mocks/                       # MSW: handlers.ts (all), session.ts (/me users), browser.ts, server.ts
 │   └── test/                        # test setup, renderApp and renderWithProviders
-├── .env.example · .nvmrc · .prettierrc · eslint.config.js · orval.config.ts
-├── tsconfig*.json · vite.config.ts · package.json · package-lock.json
+├── .env.example · .nvmrc · .prettierrc.json · .prettierignore · .gitignore · eslint.config.js · orval.config.ts
+├── index.html · tsconfig*.json · vite.config.ts · package.json · package-lock.json
 └── Dockerfile · .dockerignore · Caddyfile
 ```
 
@@ -80,11 +81,12 @@ features/review/
 ├── pages/
 │   ├── ReviewQueuePage.tsx     # 7.1
 │   ├── ReviewHistoryPage.tsx   # 7.4
-│   └── ExpiredTicketsPage.tsx  # 7.5
+│   ├── ExpiredTicketsPage.tsx  # 7.5
 │   ├── ReviewQueuePage.module.css
 │   └── ReviewQueuePage.test.tsx    # tests sit next to what they test
 ├── components/
 │   ├── ReviewQueueToolbar.tsx      # filter, selection count, decision buttons
+│   ├── ReviewQueueToolbar.module.css
 │   ├── ReviewQueueTable.tsx
 │   ├── RejectTicketModal.tsx       # 7.3 (popup)
 │   └── RequestChangesModal.tsx     # 7.2 (popup)
@@ -99,8 +101,9 @@ features/review/
 
 This is the **reference implementation** (decision FE-23): when in doubt, copy how `review` does it.
 
-- Every feature folder and every screen's page file already exist; a page starts as a `ScreenPlaceholder`
-  that the owner replaces with the real screen.
+- Every feature folder and every routed screen's page file already exist; a page starts as a
+  `ScreenPlaceholder` that the owner replaces with the real screen. Popups (no route) are created by their
+  owner in `components/`.
 - Create only the sub-folders you need. A tiny feature may have just `index.ts`, `routes.ts` and `pages/`.
 - No `utils/` or `helpers/` dump folders. A helper used by one component lives in that component's file;
   a helper used across the feature gets a named file (`hooks/`, or a clearly named `.ts` next to its user).
@@ -115,7 +118,7 @@ Other code may import a feature **only through its `index.ts`**. `index.ts` expo
 `routes` and, if another feature needs it, a few named components or hooks — nothing else.
 
 ```ts
-// features/review/index.ts
+// features/review/index.ts — once Ticket Detail needs the decision buttons (today it exports only reviewRoutes)
 export { reviewRoutes } from './routes';
 export { TicketDecisionActions } from './components/TicketDecisionActions'; // used by Ticket Detail
 ```
@@ -135,7 +138,7 @@ import { useApproveTickets } from '../../review/hooks/useApproveTickets';
 ```
 
 *Why:* the owner of `review` can rename, split or rewrite anything inside the folder without breaking
-other features. Only `index.ts` is a promise to the rest of the app. ESLint fails the build on deep
+other features. Only `index.ts` is a promise to the rest of the app. `npm run lint` (and CI) fails on deep
 imports — `@/…` or relative `../../…` alike (`import-x/no-restricted-paths`). Two exceptions, both
 enforced by the same lint config:
 `app/router/feature-routes.ts` imports `routes` from each `index.ts` (normal), and `src/mocks/handlers.ts`
@@ -164,7 +167,8 @@ Ownership notes that are easy to get wrong:
 
 - **All review decisions live in `review`**: Approve, Reject, Request changes, Unpublish, Re-publish,
   Send back to queue. Each one records a Review Decision shown in Review History, so the mutations sit
-  in one place. Ticket Detail shows them through `TicketDecisionActions` from `review`.
+  in one place. Ticket Detail will show them through `TicketDecisionActions` exported by `review` (built together with
+  Ticket Detail).
 - **Links between features use URLs, not imports.** `review` opens Ticket Detail with
   `paths.ticketDetail(id)` from `shared/routing/paths.ts`; it never imports `tickets`. *Why:* keeps the
   dependency graph one-way and free of cycles.
@@ -177,4 +181,4 @@ Ownership notes that are easy to get wrong:
 files everyone ends up editing at once.
 
 ---
-*Last verified against code: not yet — written before the scaffold (Step 5 will verify paths and lint rule names).*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

@@ -1,0 +1,20 @@
+# Keep the build context small and the npm ci layer cached: only what `npm run build` reads.
+node_modules/
+dist/
+coverage/
+.vitest/
+*.tsbuildinfo
+
+# Local settings must never reach the image (.env.local may turn on mock mode or hold local URLs).
+.env*
+
+# Not needed to build; leaving them out means a doc change does not rebuild the image.
+*.md
+guidelines/
+Dockerfile
+.dockerignore
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store

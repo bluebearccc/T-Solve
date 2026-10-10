@@ -1,6 +1,6 @@
 # 11 · Code quality & tooling
 
-> **Applies to:** `eslint.config.js`, `.prettierrc`, `.prettierignore`, `tsconfig*.json`, `vite.config.ts`,
+> **Applies to:** `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `tsconfig*.json`, `vite.config.ts`,
 > `orval.config.ts`, `package.json` scripts, `Dockerfile`, `Caddyfile`.
 > **Why it matters:** rules that live in tools don't depend on anyone's memory. The same commands run on
 > your machine, in the git hooks and in CI, so "it passed for me" means it passes everywhere.
@@ -19,7 +19,8 @@
 | Generated API up to date | `npm run generate:api` + no git diff | yes |
 | SonarQube Cloud | (CI, DevOps) | no — advisory |
 
-Run the first four before every push: `npm run lint && npm run typecheck && npm run test`.
+Run these before every push: `npm run lint && npm run typecheck && npm run test` (formatting is fixed on
+save and by the pre-commit hook; run `npm run format:check` if you are unsure).
 
 ## 2. ESLint (flat config, ESLint 10)
 
@@ -33,6 +34,7 @@ No accessibility plugin (the accessibility NFR was removed — decision log FE-2
 | `import-x/no-restricted-paths` | error | The architecture ([01](01-project-structure.md)), as six zones in `eslint.config.js`: a feature imports another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES`); features never import `app/`; `shared` never imports `features`, `app` or `mocks` (its tests may use the mock server); `app` uses a feature only through its `index.ts`; `src/mocks` imports only features' `mocks/`; only test files import `src/test` and `src/mocks`. Imports inside one feature are free. The feature list is read from `src/features/`, so a new feature folder is covered automatically. |
 | `no-restricted-imports` (antd `Tag`, `Table`, `Modal`, `Upload`, `message`, `notification` outside `shared/ui`) | error | Use the kit component ([07](07-ui-and-styling.md) U1). The error message names it. |
 | `no-restricted-imports` (`@/shared/api/generated/*`, `react-router-dom`, `axios`) | error | Import from `@/shared/api`; v8 has no `react-router-dom`; one HTTP client. |
+| `no-restricted-globals` / `no-restricted-properties` (`fetch`, `window.fetch`, `globalThis.fetch` outside `shared/api/http.ts`, mocks and tests) | error | One HTTP layer: call the API through the generated hooks ([06](06-data-layer.md) §2). |
 | `no-restricted-imports` (`msw`, `@faker-js/faker`, `@/shared/api/mocks` outside `mocks/` folders and tests) | error | Mock code must never reach the production bundle ([10](10-testing.md) §5). Mock files and tests may also import the generated `*.msw` handlers — nothing else from `generated/`. |
 | `@typescript-eslint/no-explicit-any`, `ban-ts-comment`, `no-non-null-assertion` | error | [04](04-typescript.md) R1–R3. |
 | `@typescript-eslint/consistent-type-imports` | error | `import type` for types (auto-fixable). |
@@ -53,7 +55,7 @@ Never disable a rule for a whole file; never edit `eslint.config.js` in a featur
 
 ## 3. Prettier
 
-`.prettierrc`: `singleQuote: true`, `semi: true`, `trailingComma: "all"`, `printWidth: 100`.
+`.prettierrc.json`: `singleQuote: true`, `semi: true`, `trailingComma: "all"`, `printWidth: 100`.
 `.prettierignore`: `dist/`, `src/shared/api/generated/` (orval formats it with Prettier itself),
 `openapi/` (the spec stays as the backend emits it), `package-lock.json`, and **`*.md`** — guidelines are
 hand-formatted with compact tables (Prettier would pad every table: bigger diffs and more tokens for AI agents).
@@ -115,12 +117,46 @@ the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7 is h
 
 ## 6. Build and Docker
 
-`Dockerfile` (multi-stage): stage 1 `node:24-alpine` runs `npm ci && npm run build`; stage 2 `caddy:2-alpine`
-copies `dist/` and `Caddyfile`, which serves the static files with **SPA fallback** (unknown paths →
-`index.html`, so `/review-queue` works on reload) and long cache headers for hashed assets. The `/api`
-reverse proxy is configured by DevOps in the environment's main Caddy, not in this image.
-`VITE_*` variables are build-time: set them as build args; never put secrets in them (they end up in
-the browser).
+```bash
+docker build -t tsolve-frontend .                 # inside frontend/
+docker run --rm -p 8081:8080 tsolve-frontend      # http://localhost:8081
+```
+
+**`Dockerfile`** (multi-stage, decision FE-39):
+
+- Stage 1 `node:24.21.0-alpine3.24` runs `npm ci` (its own layer, cached until `package*.json` change)
+  then `npm run build`. It runs on the build machine's CPU type (`--platform=$BUILDPLATFORM`), because the
+  output is the same static files for every CPU.
+- Stage 2 `caddy:2.11.7-alpine` copies `dist/` to `/srv` and our `Caddyfile`; runs as user `65534`
+  (nobody), listens on **8080**, `HEALTHCHECK` on `/healthz`.
+- Base images are pinned to exact versions; Dependabot (DevOps, `docker` ecosystem for `/frontend`) proposes
+  the updates. Keep the Node major in line with `.nvmrc`.
+- `VITE_*` variables are build-time: pass them as build args (`--build-arg VITE_API_BASE_URL=…`); never
+  put secrets in them (they end up in the browser). Only `VITE_API_BASE_URL` is declared (`ARG`) in the
+  Dockerfile — a new `VITE_*` variable needs its own `ARG` line there. `VITE_API_MOCKING` has no effect in a
+  production build.
+- **`.dockerignore`** keeps `node_modules`, `dist`, every `.env*` file and the docs out of the build
+  context, so a local `.env.local` can never reach the image.
+
+**`Caddyfile`** (this image only serves files; HTTPS, HSTS and the `/api` route are DevOps's main Caddy,
+which sends every path except `/api/*` to this container on port 8080):
+
+| Path | Response | Why |
+|---|---|---|
+| `/assets/*` that exists | the file, `Cache-Control: public, max-age=31536000, immutable` | names carry a content hash, so they never change |
+| `/assets/*` that doesn't exist | 404, not cached | an old tab asking for a deleted chunk must not get `index.html` |
+| `/api/*` | 404 | a routing mistake shows up as an API error, not as HTML read as JSON |
+| `/healthz` | 200 `OK` | Docker health check |
+| anything else | the file if it exists, otherwise `index.html`; `Cache-Control: no-cache` | SPA fallback (`/review-queue` works on reload); a new deploy is picked up on the next page load |
+
+Every response also gets `zstd`/`gzip` compression and these headers: `Content-Security-Policy`
+(only our own scripts, fonts and API; `style-src 'unsafe-inline'` because antd writes its CSS into
+`<style>` tags at run time), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`. **If the API ever moves to another origin**
+(`VITE_API_BASE_URL`), add that origin to `connect-src`, or the browser blocks every call.
+
+Check a Caddyfile change with `caddy fmt --diff Caddyfile` and `caddy validate --config Caddyfile`, and
+a Dockerfile change with `hadolint Dockerfile`.
 
 ## 7. Checklist
 
@@ -129,4 +165,4 @@ the browser).
 - [ ] Spec changed → `generate:api` run and committed.
 
 ---
-*Last verified against code: not yet — exact rule options, scripts and Docker files are created in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

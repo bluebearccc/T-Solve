@@ -13,7 +13,7 @@ default; we state it explicitly anyway so nobody wonders. The settings that matt
 |---|---|---|
 | `strict` | `true` | Enables `strictNullChecks`, `noImplicitAny` and the rest of the strict family. |
 | `noUncheckedIndexedAccess` | `true` | `items[0]` is `Item \| undefined`; forces you to handle "not found". |
-| `exactOptionalPropertyTypes` | `false` | Too noisy with antd/orval types for a junior team; revisit later. |
+| `exactOptionalPropertyTypes` | not set (default `false`) | Too noisy with antd/orval types for a junior team; revisit later. |
 | `noImplicitOverride`, `noFallthroughCasesInSwitch` | `true` | Small, cheap safety nets. |
 | `noUnusedLocals`, `noUnusedParameters` | `true` | Dead code is a review cost. (Prefix intentionally unused params with `_`.) |
 | `erasableSyntaxOnly` | `true` | Bans `enum`, `namespace` and parameter properties — syntax that is not plain JS once types are removed. |
@@ -21,7 +21,7 @@ default; we state it explicitly anyway so nobody wonders. The settings that matt
 | `module` / `moduleResolution` | `preserve` / `bundler` | What TS 6 recommends for apps built by a bundler (Vite). |
 | `jsx` | `react-jsx` | React 19 automatic runtime. |
 | `paths` | `{ "@/*": ["./src/*"] }` | The one path alias. (No `baseUrl` — deprecated in TS 6.) |
-| `types` | `["vite/client"]` (+ `vitest/globals` in tests) | TS 6 defaults `types` to `[]`; list what we use. |
+| `types` | `["vite/client", "vitest/globals"]` (one config for app and tests; `tsconfig.node.json`: `["node"]`) | TS 6 defaults `types` to `[]`; list what we use. |
 
 Do not change these in a feature PR. `npm run typecheck` runs `tsc -b --noEmit` over the app, the
 tests and the config files.
@@ -52,7 +52,7 @@ the library is fixed, so the hack cannot outlive its reason.
 ```ts
 // ✅ Do
 const { ticketId } = useParams();
-if (!ticketId) return <NotFoundState />;
+if (!ticketId) return <EmptyState />;
 
 // ❌ Don't
 const ticketId = useParams().ticketId!;
@@ -120,19 +120,20 @@ features/*/hooks ─► import types and hooks from '@/shared/api'  ─► pages
 - Need a *view* of an API type? Derive it, don't redeclare it:
 
 ```ts
-import type { TicketSummary } from '@/shared/api';
+import type { ReviewQueueItem } from '@/shared/api';
 
 // ✅ Do — derived; stays correct when the API changes
-type QueueRow = Pick<TicketSummary, 'id' | 'sourceTicketId' | 'title' | 'reviewDueDate'>;
+type QueueRow = Pick<ReviewQueueItem, 'ticketId' | 'sourceTicketId' | 'title' | 'reviewDueDate'>;
 
 // ❌ Don't — a copy that silently drifts
-type QueueRow = { id: number; sourceTicketId: string; title: string; reviewDueDate: string };
+type QueueRow = { ticketId: number; sourceTicketId: string; title: string; reviewDueDate: string };
 ```
 
-- Value lists (statuses, sources, roles) are generated as string-literal unions with a matching
-  `const` object. Use them instead of typing the strings again.
+- Value lists in the spec (today `Role`, `ProjectRole`, `TicketSource`; statuses once the backend adds them)
+  are generated as string-literal unions with a matching `const` object. Use them instead of typing the
+  strings again.
 - Dates arrive as ISO strings. Keep them as `string` in data; convert only when displaying, with
-  `formatDate` / `formatDateTime` from `@/shared/lib/date`.
+  `formatDate` / `formatDateTime` from `@/shared/lib`.
 
 ## 4. When you *do* write your own types
 
@@ -153,4 +154,4 @@ Export a type only when another file actually imports it.
 - [ ] `import type` for type-only imports.
 
 ---
-*Last verified against code: not yet — compiler options will be checked when the scaffold is built (Step 5).*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

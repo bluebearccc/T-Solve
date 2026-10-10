@@ -4,6 +4,7 @@ import { AppShell } from '../layout/AppShell';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { featureRoutes } from './feature-routes';
+import { FullPageLoading } from './FullPageLoading';
 import { GuestOnly, LandingRedirect, RequireAuth, RequireRole } from './guards';
 import { RootLayout } from './RootLayout';
 
@@ -31,6 +32,8 @@ export function buildRoutes(routes: readonly FeatureRoute[] = featureRoutes): Ro
     {
       element: <RootLayout />,
       errorElement: <RouteErrorPage />,
+      // Shown while the first page's lazy module loads (opening a deep link or reloading).
+      hydrateFallbackElement: <FullPageLoading />,
       children: [
         {
           element: <GuestOnly />,

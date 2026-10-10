@@ -38,7 +38,7 @@ Paths live in `shared/routing/paths.ts` (pre-filled). Always use `paths.*`, neve
 | 9.3 | Audit Entry Detail (popup) | — | `audit-log/AuditEntryDetailModal` | Admin |
 
 Plus: `/` → landing page of the signed-in role (or `/login`); 403 is shown in place by the guard;
-anything else → 404 ("This page does not exist." — the SRS has no MSG code for it yet; open point).
+anything else → 404 for a signed-in user (a signed-out user is sent to `/login?returnTo=…` first) ("This page does not exist." — the SRS has no MSG code for it yet; open point).
 In dev builds only: `/dev/kit`.
 
 **Landing page per role** (SRS Screen List #1): Admin → User List · Department Manager → Knowledge
@@ -153,4 +153,4 @@ Detail are modals opened by their parent screen with local state (`const [isReje
 - [ ] Popups are modals with local state.
 
 ---
-*Last verified against code: not yet — `FeatureRoute`, `paths` and `useSession` helpers will be checked in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

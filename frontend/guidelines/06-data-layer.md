@@ -178,7 +178,7 @@ await showAcknowledgement('MSG07')                         // → dialog with on
 | Red text under the field | `Form.Item` error (`rules` or server `fieldErrors`) — see [09](09-forms-and-validation.md) | MSG01, MSG02, MSG43, MSG47 |
 | Shown in the page | `EmptyState` / inline `Alert` in the page | MSG04, MSG16, MSG36, MSG86 |
 | Toast | `showMessage(code)` | MSG05, MSG18, MSG20, MSG38 |
-| Confirm dialog | `ConfirmDialog` with the code as its text | MSG19, MSG29, MSG90, MSG92 |
+| Confirm dialog | `ConfirmDialog` with the code as its text; when the confirm comes with a form, a warning `Alert` at the top of the `FormModal` (MSG19 in Reject Ticket) | MSG29, MSG90, MSG92 · MSG19 |
 | Tooltip | `Tooltip title={msg(code)}` | MSG22 |
 
 ### Who handles which error
@@ -217,4 +217,4 @@ once. The expired-session flow and the dev role switcher use the same `resetSess
 - [ ] Spec + generated code + fixes committed together when the API changed.
 
 ---
-*Last verified against code: not yet — generated names, the mutator signature and `meta` flag will be confirmed in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

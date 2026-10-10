@@ -1,0 +1,16 @@
+/* Figma "Web/Empty & Loading": centred, 200 high, icon above a Body/secondary message. */
+.state {
+  min-height: 200px;
+  padding: var(--ant-padding-lg);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 64px;
+  color: var(--ant-color-text-quaternary);
+}
+
+.errorIcon {
+  font-size: 40px;
+  color: var(--ant-color-error);
+}

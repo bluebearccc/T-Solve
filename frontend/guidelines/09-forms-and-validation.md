@@ -34,12 +34,12 @@ the field's label.
 | `rules.maxLength('Reason', 1000)` | MSG02 "Reason must not exceed 1000 characters." | every text field with a limit |
 | `rules.email()` | MSG03 | Email |
 | `rules.wholeNumberMin(1)` | MSG44 | Review range |
-| `rules.dateRangeNotFuture()` | MSG94 | Resolved from / Resolved to |
+| `rules.dateRangeNotFuture()` | MSG94 | Resolved from / Resolved to — *not built yet (with the first date-range filter)* |
 
 ```tsx
 // ✅ Do
 <FormField name="reason" label="Reason" rules={[rules.required('Reason'), rules.maxLength('Reason', 1000)]}>
-  <Input.TextArea rows={4} showCount />
+  <Input.TextArea rows={3} count={{ show: true, max: 1000 }} />
 </FormField>
 
 // ❌ Don't — invented text, native maxLength
@@ -52,7 +52,7 @@ the field's label.
   200 · Ticket ID 50 · Department name 50 · Company name 100 · Email 100 · Search 100 or 200 · Feedback
   comment 500 · Project key 20 · Jira site 200).
 - **Don't use the input's native `maxLength`.** It silently cuts pasted text, so the user never sees MSG02.
-  Use `showCount` + `rules.maxLength`.
+  Use `count={{ show: true, max }}` (shows "12 / 1000" without cutting) + `rules.maxLength`.
 - Server-only checks (duplicate name MSG43, duplicate email MSG41, Jira project already linked MSG47,
   existing ticket ID MSG66) come back as `fieldErrors` — don't try to pre-check them in the browser.
 
@@ -83,9 +83,11 @@ function handleFinish(values: RejectTicketsRequest) {
 
 ## 4. Popups with forms (`FormModal`)
 
-- `FormModal` (kit, Figma "Web/Modal Header Kind=Form" + Footer) = antd `Modal` + `AppForm`, with
-  `destroyOnHidden` so a reopened popup starts clean, OK button wired to `form.submit()`, and the title from
-  the SRS ("Reject Ticket", "Request Changes", "Give Feedback").
+- `FormModal` (kit, Figma "Web/Modal Header" + Footer) = antd `Modal` + `AppForm`: centred, cleared when it
+  closes so a reopened popup starts empty, OK is the form's submit button, the title from the SRS ("Reject
+  Ticket", "Request Changes", "Give Feedback"). `kind="danger"` = red icon and no close icon (Figma Kind=Danger);
+  `width` from the Figma frame (Reject Ticket 600 — decision FE-35). Full example:
+  `features/review/components/RejectTicketModal.tsx`.
 - Cancel closes without asking — except where the SRS requires a confirm (below).
 
 ## 5. Confirm dialogs (`ConfirmDialog`)

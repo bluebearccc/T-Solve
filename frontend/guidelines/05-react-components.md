@@ -101,22 +101,24 @@ Handle user actions in event handlers, not in effects. (React docs: "You Might N
 ### C8 — Keep state minimal and as low as possible.
 
 - State that lives in the URL (filters, tab, page number) is read from `useSearchParams`, not copied
-  into `useState`. *Why:* the back button and shared links work, and there is one source of truth.
+  into `useState`. List screens use `useListSearchParams(defaultSort)` from `@/shared/routing`: page
+  (from 1), sort and filters in the URL, plus `apiPaging` ready for the generated hook. *Why:* the back button and shared links work, and there is one source of truth.
 - Server data stays in the query cache. Never `setState(data)`.
 - Modal open/close and selections are local `useState` in the page or feature component that owns them.
 
 ### C9 — Every data view has four states: loading, error, empty, data.
 
 ```tsx
-if (isPending) return <LoadingState />;
-if (isError) return <ErrorState onRetry={refetch} />;          // shows MSG06
-if (data.items.length === 0) return <EmptyState code="MSG16" />; // Review Queue's empty text
-return <ReviewQueueTable rows={data.items} … />;
+if (query.isPending) return <LoadingState />;
+if (query.isError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
+if (query.data.content.length === 0) return <EmptyState code="MSG16" />; // Review Queue's empty text
+return <TicketCards tickets={query.data.content} />;
 ```
 
 Use the kit's `LoadingState`, `ErrorState` and `EmptyState` (Figma "Web/Empty & Loading"). The default
 empty message is MSG04; use the screen-specific code where the SRS names one (MSG16 for Review Queue).
-`DataTable` handles these states for you when you pass `loading`, `error` and `data`.
+`DataTable` handles these states for you when you pass `loading`, `error`, `onRetry` and `rows`
+(see `features/review/components/ReviewQueueTable.tsx`).
 
 ### C10 — Lists need stable keys from the data.
 

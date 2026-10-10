@@ -1,16 +1,16 @@
 import type { HttpHandler } from 'msw';
-import { handlers as auditLog } from '@/features/audit-log/mocks/handlers';
-import { handlers as auth } from '@/features/auth/mocks/handlers';
-import { handlers as feedback } from '@/features/feedback/mocks/handlers';
-import { handlers as jiraIntegration } from '@/features/jira-integration/mocks/handlers';
-import { handlers as knowledgeDashboard } from '@/features/knowledge-dashboard/mocks/handlers';
-import { handlers as myProfile } from '@/features/my-profile/mocks/handlers';
-import { handlers as review } from '@/features/review/mocks/handlers';
-import { handlers as search } from '@/features/search/mocks/handlers';
-import { handlers as ticketImport } from '@/features/ticket-import/mocks/handlers';
-import { handlers as tickets } from '@/features/tickets/mocks/handlers';
-import { handlers as users } from '@/features/users/mocks/handlers';
-import { handlers as workspace } from '@/features/workspace/mocks/handlers';
+import * as auditLog from '@/features/audit-log/mocks/handlers';
+import * as auth from '@/features/auth/mocks/handlers';
+import * as feedback from '@/features/feedback/mocks/handlers';
+import * as jiraIntegration from '@/features/jira-integration/mocks/handlers';
+import * as knowledgeDashboard from '@/features/knowledge-dashboard/mocks/handlers';
+import * as myProfile from '@/features/my-profile/mocks/handlers';
+import * as review from '@/features/review/mocks/handlers';
+import * as search from '@/features/search/mocks/handlers';
+import * as ticketImport from '@/features/ticket-import/mocks/handlers';
+import * as tickets from '@/features/tickets/mocks/handlers';
+import * as users from '@/features/users/mocks/handlers';
+import * as workspace from '@/features/workspace/mocks/handlers';
 import * as generated from '@/shared/api/generated/index.msw';
 import { sessionHandlers } from './session';
 
@@ -25,19 +25,29 @@ const generatedHandlers: HttpHandler[] = Object.values(generated).flatMap((tagHa
   tagHandlers(),
 );
 
+/** Every feature's mocks, in the order their handlers are tried. */
+const FEATURE_MOCKS = [
+  auth,
+  myProfile,
+  users,
+  workspace,
+  jiraIntegration,
+  ticketImport,
+  tickets,
+  search,
+  review,
+  feedback,
+  knowledgeDashboard,
+  auditLog,
+];
+
 export const handlers: HttpHandler[] = [
   ...sessionHandlers,
-  ...auth,
-  ...myProfile,
-  ...users,
-  ...workspace,
-  ...jiraIntegration,
-  ...ticketImport,
-  ...tickets,
-  ...search,
-  ...review,
-  ...feedback,
-  ...knowledgeDashboard,
-  ...auditLog,
+  ...FEATURE_MOCKS.flatMap((feature) => feature.handlers),
   ...generatedHandlers,
 ];
+
+/** Restores every feature's mock data (tickets decided in one test are back for the next). */
+export function resetMockData(): void {
+  for (const feature of FEATURE_MOCKS) feature.resetMockData();
+}

@@ -43,6 +43,9 @@
 | FE-33 | Where errors are shown: queries in place, mutations as toasts | Approved (step 5.3) — refines FE-08 |
 | FE-34 | Review Queue keeps Request changes, for all selected tickets | Approved (2026-10-10) — SRS 7.1/7.2 to be updated |
 | FE-35 | Screen sizes win over kit sizes | Approved (2026-10-10) |
+| FE-36 | Kit built in step 5.4; uploads and date-range rule deferred | Approved (step 5.4) |
+| FE-37 | List state in the URL with `useListSearchParams` | Approved (step 5.4) |
+| FE-38 | Mock data is reset after every test | Approved (step 5.4) |
 
 ---
 
@@ -182,6 +185,9 @@ shell, not to each page; one source (the route) keeps header, tab and menu consi
 libraries into their own chunks; `antd/dist/reset.css` is the only global CSS. *Why:* our code is ~20 kB and
 changes every deploy, while the libraries (about 270 kB gzipped) rarely change, so browsers keep
 them cached; without a reset the browser's default `body` margin offsets the shell.
+*Update (step 5.4):* with Table, Form, Modal and Select in use the antd chunk is ~800 kB (~260 kB
+gzipped), so `chunkSizeWarningLimit` is 1000 kB. The warning would otherwise show on every build and
+teach people to ignore build warnings; splitting antd further gains nothing because it is cached as one file.
 
 **FE-30 — MSW worker served by Vite; mock mode in dev builds only (2026-10-10, step 5.3).** `msw/vite` in
 `worker-only` mode serves `/mockServiceWorker.js` from `node_modules` on the dev server; nothing is committed
@@ -225,6 +231,24 @@ MSG21 for several tickets.
 size or spacing, the screen wins (screens were designed after the kit); colours and fonts always come from
 the styles. Examples: Reject Ticket popup 600 px wide (kit pattern 520); Review Queue table card radius 8
 (kit Card 12).
+
+**FE-36 — Kit scope in step 5.4 (2026-10-10).** Built: `StatusTag`, `DataTable` + `cells`, `EmptyState`,
+`LoadingState`, `ErrorState`, `ConfirmDialog`, `FormModal`, `AppForm`, `FormField`, `SectionCard`,
+`StatCard`, `shared/forms` (`rules`, `applyApiErrors`) and the `/dev/kit` page. Deferred to the first screen
+that needs them: `EvidenceUpload`, `CsvUpload`, `rules.dateRangeNotFuture` (MSG94). Kit boolean props follow
+guideline 05 C4 (`isOpen`, `isDanger`, not `open`, `danger`). Table look from Figma as `Table` tokens in
+`theme.ts` (padding 12 × 8, Body Strong headers). *Why:* the example feature uses everything built; uploads
+need their own design check against the Figma Upload variants and the Evidence rules.
+
+**FE-37 — List state in the URL (2026-10-10).** `useListSearchParams(defaultSort)` (`shared/routing`) keeps
+page, sort and filters of a list in the URL. The URL `page` counts from 1 like the UI; `apiPaging` converts to
+the API's page from 0 (FE-32). A filter or sort change goes back to page 1. *Why:* the back button, reload and
+shared links show the same list (guideline 05 C8), and every list screen handles it the same way.
+
+**FE-38 — Mock data is reset after every test (2026-10-10).** Each feature's `mocks/handlers.ts` exports
+`handlers` and `resetMockData()`; `src/test/setup.ts` calls every `resetMockData()` after each test. Mutable mock
+data (e.g. the Review Queue removing decided tickets) lives in a module variable of the feature's mocks.
+*Why:* mocks that behave like the backend make mock mode convincing, and tests stay independent (guideline 10 T4).
 
 ## Working conventions (not code decisions)
 

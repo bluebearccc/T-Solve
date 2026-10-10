@@ -53,6 +53,18 @@ export function buildRoutes(routes: readonly FeatureRoute[] = featureRoutes): Ro
                   element: <RequireRole roles={route.roles} />,
                   children: [toPageRoute(route)],
                 })),
+                // Dev builds only: every kit component on one page (guideline 07 §3). `import.meta.env.DEV`
+                // is written literally so production builds drop the page.
+                ...(import.meta.env.DEV
+                  ? [
+                      {
+                        path: '/dev/kit',
+                        handle: { title: 'Kit (dev only)' },
+                        lazy: () =>
+                          import('../dev/KitPage').then((m) => ({ Component: m.KitPage })),
+                      },
+                    ]
+                  : []),
                 { path: '*', handle: { title: 'Page not found' }, element: <NotFoundPage /> },
               ],
             },

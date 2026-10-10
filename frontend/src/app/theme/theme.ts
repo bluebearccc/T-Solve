@@ -80,6 +80,17 @@ export const theme: ThemeConfig = {
       activeBarBorderWidth: 0,
     },
     Card: { borderRadiusLG: 12 },
+    // Web/Table/Header Cell + Cell: padding 12 × 8, header on bg/subtle with Body Strong (Inter Medium) titles;
+    // a sorted column is not tinted (Figma has no sort highlight).
+    Table: {
+      cellPaddingBlock: 12,
+      cellPaddingInline: 8,
+      headerBg: '#FAFAFA', // bg/subtle
+      headerSortActiveBg: '#FAFAFA',
+      headerSortHoverBg: '#F0F0F0', // border/secondary
+      bodySortBg: 'transparent',
+      fontWeightStrong: 500, // Body Strong
+    },
     Typography: { titleMarginTop: 0, titleMarginBottom: 0 },
   },
 };

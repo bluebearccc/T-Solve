@@ -19,8 +19,9 @@
 | Generated API up to date | `npm run generate:api` + no git diff | yes |
 | SonarQube Cloud | (CI, DevOps) | no — advisory |
 
-Run these before every push: `npm run lint && npm run typecheck && npm run test` (formatting is fixed on
-save and by the pre-commit hook; run `npm run format:check` if you are unsure).
+Run these before every push: `npm run format:check && npm run lint && npm run typecheck && npm run test`
+(`npm run format` fixes formatting). Format On Save and, once DevOps adds it, the pre-commit hook (§5)
+keep formatting right as you go.
 
 ## 2. ESLint (flat config, ESLint 10)
 
@@ -165,7 +166,8 @@ a Dockerfile change with `hadolint Dockerfile`.
 
 ## 7. Checklist
 
-- [ ] `npm run lint && npm run typecheck && npm run test` pass; no new warnings you could fix.
+- [ ] `npm run format:check && npm run lint && npm run typecheck && npm run test` pass; no new warnings
+  you could fix.
 - [ ] No `eslint-disable` without a reason; no config files changed in a feature PR.
 - [ ] Spec changed → `generate:api` run and committed.
 

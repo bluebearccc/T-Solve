@@ -46,7 +46,7 @@
 | FE-36 | Kit built in step 5.4; uploads and date-range rule deferred | Approved (step 5.4) |
 | FE-37 | List state in the URL with `useListSearchParams` | Approved (step 5.4) |
 | FE-38 | Mock data is reset after every test | Approved (step 5.4) |
-| FE-39 | Docker image: pinned Node build + non-root Caddy on 8080, CSP | Proposed (step 5.5) |
+| FE-39 | Docker image: pinned Node build + non-root Caddy on 8080, CSP | Approved (step 5.5) |
 
 ---
 
@@ -251,13 +251,15 @@ shared links show the same list (guideline 05 C8), and every list screen handles
 data (e.g. the Review Queue removing decided tickets) lives in a module variable of the feature's mocks.
 *Why:* mocks that behave like the backend make mock mode convincing, and tests stay independent (guideline 10 T4).
 
-**FE-39 — Docker image (2026-10-10, step 5.5).** Stage 1 `node:24.21.0-alpine3.24` builds; stage 2
+**FE-39 — Docker image (Hiếu, 2026-10-10, step 5.5).** Stage 1 `node:24.21.0-alpine3.24` builds; stage 2
 `caddy:2.11.7-alpine` serves `dist/` on port **8080** as user 65534 (nobody), with `/healthz` for the Docker
 health check. Base images pinned to exact versions (Dependabot updates them). The Caddyfile serves files
 only: one-year immutable cache for `/assets/*`, a plain 404 for missing assets and for `/api/*`, SPA fallback
 with `no-cache` for everything else, and a Content-Security-Policy that allows only our own origin
 (`style-src 'unsafe-inline'` for antd's run-time CSS). HTTPS, HSTS and the `/api` route stay in DevOps's main
-Caddy. *Why:* a non-root process on an unprivileged port is the default every scanner (Sonar, hadolint) asks
+Caddy. *Options:* the image only builds `dist/` and DevOps's main Caddy serves the files (one Caddy, but
+frontend cache and CSP rules would live in a DevOps file, and deploy/rollback would copy files instead of
+swapping image tags) — rejected by Hiếu: keep the image self-contained. *Why:* a non-root process on an unprivileged port is the default every scanner (Sonar, hadolint) asks
 for; pinned images make two builds of one commit identical; the CSP belongs here because it depends on what
 the frontend loads, and it was checked in Chromium (no violations on the Review Queue and its popups).
 

@@ -108,7 +108,12 @@ Use Node from `frontend/.nvmrc` and cache `~/.npm` keyed on `frontend/package-lo
 *Why:* generated code is thousands of lines that would eat the free plan's 50k-LOC limit and report
 "duplication" nobody can fix.
 
-**Dependabot:** weekly for `/frontend` (npm); group minor/patch updates into one PR; majors one by one —
+**Main Caddy (per environment, DevOps):** HTTPS and HSTS; `/api/*` → the backend; everything else →
+`reverse_proxy <web app container>:8080`. The web app image has its own `Caddyfile` that only serves the
+built files (§6) — the two never overlap. Health check: `GET /healthz` → 200.
+
+**Dependabot:** weekly for `/frontend` (npm, and `docker` for the two base images in the `Dockerfile`);
+group minor/patch updates into one PR; majors one by one —
 the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7 is held back on purpose; keep
 `typescript` on `~6.0`).
 

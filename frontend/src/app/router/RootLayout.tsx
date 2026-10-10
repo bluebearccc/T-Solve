@@ -2,11 +2,13 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router';
 import { usePageTitle } from './usePageTitle';
 
-// Dev builds only. `import.meta.env.DEV` must be written literally here: Vite replaces it with `false` in
-// production builds and drops the switcher's code entirely.
-const DevRoleSwitcher = import.meta.env.DEV
-  ? lazy(() => import('../dev/DevRoleSwitcher').then((m) => ({ default: m.DevRoleSwitcher })))
-  : null;
+// Dev builds in mock mode only (with a real backend the session cookie decides who you are).
+// `import.meta.env.…` must be written literally here: Vite replaces it with `false` in production builds
+// and drops the switcher's code entirely.
+const DevRoleSwitcher =
+  import.meta.env.DEV && import.meta.env.VITE_API_MOCKING === 'true'
+    ? lazy(() => import('../dev/DevRoleSwitcher').then((m) => ({ default: m.DevRoleSwitcher })))
+    : null;
 
 export function RootLayout() {
   const title = usePageTitle();

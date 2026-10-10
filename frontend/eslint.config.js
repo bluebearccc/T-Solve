@@ -48,9 +48,9 @@ const boundaryZones = [
     from: './src/app',
     message: `Features never import app/. ${BOUNDARY_HELP}`,
   },
-  // shared never imports features, app or mocks.
+  // shared never imports features, app or mocks (its tests may use the mock server — last zone).
   {
-    target: './src/shared',
+    target: 'src/shared/**/!(*.test).{ts,tsx}',
     from: ['./src/features', './src/app', './src/mocks'],
     message: `shared/ never imports features/, app/ or mocks/. ${BOUNDARY_HELP}`,
   },
@@ -75,6 +75,58 @@ const boundaryZones = [
     message: `Only *.test.ts(x) files may import src/test or src/mocks. ${BOUNDARY_HELP}`,
   },
 ];
+
+/** Mock handlers and tests: the only files that may use MSW, faker and the mock helpers (guideline 10). */
+const MOCK_AND_TEST_FILES = [
+  'src/mocks/**/*.{ts,tsx}',
+  'src/**/mocks/**/*.{ts,tsx}',
+  'src/test/**/*.{ts,tsx}',
+  'src/**/*.test.{ts,tsx}',
+];
+
+/** Raw antd components that have a Figma-kit wrapper in shared/ui (guideline 07). */
+const BANNED_RAW_ANTD = [
+  { name: 'antd', importNames: ['Tag'], message: 'Use StatusTag from @/shared/ui (guideline 07).' },
+  {
+    name: 'antd',
+    importNames: ['Table'],
+    message: 'Use DataTable from @/shared/ui (guideline 07).',
+  },
+  {
+    name: 'antd',
+    importNames: ['Modal'],
+    message: 'Use ConfirmDialog or FormModal from @/shared/ui (guideline 07).',
+  },
+  {
+    name: 'antd',
+    importNames: ['Upload'],
+    message: 'Use EvidenceUpload or CsvUpload from @/shared/ui (guideline 07).',
+  },
+  {
+    name: 'antd',
+    importNames: ['message', 'notification'],
+    message: 'Use showMessage from @/shared/messages (guideline 06).',
+  },
+];
+
+const BANNED_PACKAGES = [
+  {
+    name: 'react-router-dom',
+    message: "React Router 8 has no react-router-dom; import from 'react-router'.",
+  },
+  { name: 'axios', message: 'All HTTP goes through @/shared/api (guideline 06).' },
+];
+
+const GENERATED_IMPORTS = {
+  group: ['@/shared/api/generated', '@/shared/api/generated/*'],
+  message: 'Import API hooks and types from @/shared/api (guideline 06).',
+};
+
+const MOCK_ONLY_IMPORTS = {
+  group: ['msw', 'msw/*', '@faker-js/faker', '@/shared/api/mocks', '@/shared/api/mocks/*'],
+  message:
+    'MSW, faker and the mock helpers belong in mocks/ folders and tests only — they must never reach the production bundle (guideline 10).',
+};
 
 export default defineConfig([
   globalIgnores(['dist', 'coverage', '.vitest', 'public', 'src/shared/api/generated']),
@@ -129,50 +181,46 @@ export default defineConfig([
     rules: { 'import-x/no-restricted-paths': ['error', { zones: boundaryZones }] },
   },
 
-  // ---- Banned imports (guidelines 06, 07, 11) ------------------------------------------------
+  // ---- Banned imports (guidelines 06, 07, 10, 11) --------------------------------------------
+  // App code: kit components instead of raw antd, one HTTP layer, no mock libraries.
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/shared/ui/**'],
+    ignores: ['src/shared/ui/**', ...MOCK_AND_TEST_FILES],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          paths: [
-            {
-              name: 'antd',
-              importNames: ['Tag'],
-              message: 'Use StatusTag from @/shared/ui (guideline 07).',
-            },
-            {
-              name: 'antd',
-              importNames: ['Table'],
-              message: 'Use DataTable from @/shared/ui (guideline 07).',
-            },
-            {
-              name: 'antd',
-              importNames: ['Modal'],
-              message: 'Use ConfirmDialog or FormModal from @/shared/ui (guideline 07).',
-            },
-            {
-              name: 'antd',
-              importNames: ['Upload'],
-              message: 'Use EvidenceUpload or CsvUpload from @/shared/ui (guideline 07).',
-            },
-            {
-              name: 'antd',
-              importNames: ['message', 'notification'],
-              message: 'Use showMessage from @/shared/messages (guideline 06).',
-            },
-            {
-              name: 'react-router-dom',
-              message: "React Router 8 has no react-router-dom; import from 'react-router'.",
-            },
-            { name: 'axios', message: 'All HTTP goes through @/shared/api (guideline 06).' },
-          ],
+          paths: [...BANNED_RAW_ANTD, ...BANNED_PACKAGES],
+          patterns: [GENERATED_IMPORTS, MOCK_ONLY_IMPORTS],
+        },
+      ],
+    },
+  },
+  // shared/ui wraps the raw antd components, so it may import them.
+  {
+    files: ['src/shared/ui/**/*.{ts,tsx}'],
+    ignores: MOCK_AND_TEST_FILES,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: BANNED_PACKAGES, patterns: [GENERATED_IMPORTS, MOCK_ONLY_IMPORTS] },
+      ],
+    },
+  },
+  // Mock handlers and tests may use MSW, faker and orval's generated MSW handlers (*.msw).
+  {
+    files: MOCK_AND_TEST_FILES,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...BANNED_RAW_ANTD, ...BANNED_PACKAGES],
           patterns: [
             {
-              group: ['@/shared/api/generated', '@/shared/api/generated/*'],
-              message: 'Import API hooks and types from @/shared/api (guideline 06).',
+              // Everything under generated/ except index.msw and <tag>/<tag>.msw.
+              regex: String.raw`^@/shared/api/generated(?!/(?:index\.msw|[^/]+/[^/]+\.msw)$)`,
+              message:
+                'Import API types from @/shared/api; only the generated *.msw handlers may be imported directly (guideline 10).',
             },
           ],
         },
@@ -185,6 +233,12 @@ export default defineConfig([
     files: ['*.{js,ts}'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node, parserOptions: { projectService: false } },
+  },
+  // Small Node scripts behind npm scripts (e.g. api:pull).
+  {
+    files: ['scripts/**/*.mjs'],
+    extends: [js.configs.recommended],
+    languageOptions: { globals: globals.node },
   },
 
   prettier,

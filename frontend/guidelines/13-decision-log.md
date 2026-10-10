@@ -37,6 +37,12 @@
 | FE-27 | Prettier does not format Markdown | Approved |
 | FE-28 | Screen title in the AppShell header, from the route | Approved (step 5.2) |
 | FE-29 | Library chunks and antd reset.css | Approved (step 5.2) |
+| FE-30 | MSW worker served by Vite, mock mode in dev builds only | Approved (step 5.3) |
+| FE-31 | npm override for Vitest's optional msw peer | Approved (step 5.3) |
+| FE-32 | API shapes proposed by the OpenAPI stub | Approved (step 5.3) — needs backend agreement |
+| FE-33 | Where errors are shown: queries in place, mutations as toasts | Approved (step 5.3) — refines FE-08 |
+| FE-34 | Review Queue keeps Request changes, for all selected tickets | Approved (2026-10-10) — SRS 7.1/7.2 to be updated |
+| FE-35 | Screen sizes win over kit sizes | Approved (2026-10-10) |
 
 ---
 
@@ -176,6 +182,49 @@ shell, not to each page; one source (the route) keeps header, tab and menu consi
 libraries into their own chunks; `antd/dist/reset.css` is the only global CSS. *Why:* our code is ~20 kB and
 changes every deploy, while the libraries (about 270 kB gzipped) rarely change, so browsers keep
 them cached; without a reset the browser's default `body` margin offsets the shell.
+
+**FE-30 — MSW worker served by Vite; mock mode in dev builds only (2026-10-10, step 5.3).** `msw/vite` in
+`worker-only` mode serves `/mockServiceWorker.js` from `node_modules` on the dev server; nothing is committed
+in `public/`. Mocks start only when `import.meta.env.DEV` and `VITE_API_MOCKING=true` (written literally in
+`main.tsx`, so production builds contain no MSW, faker or mock data — checked on the built bundle).
+*Options:* `npx msw init public` (a committed copy that must be regenerated on every MSW upgrade, or the
+browser warns about a version mismatch). *Why:* the worker can never drift from the installed version.
+Refines FE-11.
+
+**FE-31 — npm override for Vitest's optional msw peer (2026-10-10, step 5.3).** `package.json` →
+`"overrides": { "@vitest/mocker": { "msw": "$msw" } }`. *Why:* Vitest 5.0.3's `@vitest/mocker` declares an
+*optional* peer `msw ^2.4.9`, used only by Vitest browser mode (not used here). Without the override `npm ci`
+still works but `npm ls` reports the tree as invalid. Remove the override when Vitest declares MSW 3.
+
+**FE-32 — API shapes proposed by the OpenAPI stub (2026-10-10, step 5.3).** `openapi/tsolve-api.yaml`
+(tags `session`, `review`) proposes, for the backend to confirm or replace:
+`GET /api/v1/me` (401 when nobody is signed in) and `POST /api/v1/auth/logout` (204);
+Spring paging (`page` from 0, `size`, `sort=field,dir`; response `{ content, page: { size, number,
+totalElements, totalPages } }` = Spring Data `PagedModel`); `GET /api/v1/review-queue/ticket-ids` so
+"Select all" can take every ticket in the queue, not only the page shown (SRS 7.1);
+`POST /api/v1/reviews/{approve|reject|request-changes}` with `{ ticketIds, reason | comment }` returning
+`{ count }` (the `{count}` of MSG18 / MSG20 / MSG21); enum spellings as in guideline 03 §5. *Why:* each shape
+is what Spring produces with the least custom code, and the frontend can be built and tested before the
+backend exists. When the backend's spec differs, `npm run api:pull` + `generate:api` wins.
+
+**FE-33 — Where errors are shown (2026-10-10, step 5.3).** A failed **query** is shown in place by the
+screen (`ErrorState` with `msg(error.code)`), never as a toast; a failed **mutation** gets a global toast
+unless it handles its own error (`meta.handlesOwnErrors`); a 401 while signed in shows MSG07 once and then
+resets the session. `ApiError.code` falls back to MSG07 (401), MSG08 (403) or MSG06. *Options:* a global
+MSG06 toast for every failure (the guideline draft). *Why:* a failed list already shows its error in the
+page, and a toast as well would be two messages for one error. Refines FE-08 and guideline 06 §6.
+
+**FE-34 — Review Queue keeps Request changes (Hiếu, 2026-10-10).** The Review Queue (7.1) has a Request
+changes button next to Reject and Approve (Figma callout 6). It opens the Request Changes popup (7.2) for
+**all selected tickets with one comment**, like Reject; each author sees the same comment in Jira. Every
+queue ticket comes from the Solution Form, so MSG22 cannot apply on the queue (it still applies on Ticket
+Detail). SRS v2 7.1 / 7.2 still describe the older behaviour — Hiếu updates them, including a count form of
+MSG21 for several tickets.
+
+**FE-35 — Screen sizes win over kit sizes (Hiếu, 2026-10-10).** When a Figma screen and the kit disagree on a
+size or spacing, the screen wins (screens were designed after the kit); colours and fonts always come from
+the styles. Examples: Reject Ticket popup 600 px wide (kit pattern 520); Review Queue table card radius 8
+(kit Card 12).
 
 ## Working conventions (not code decisions)
 

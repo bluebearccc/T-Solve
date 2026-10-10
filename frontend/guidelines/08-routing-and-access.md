@@ -77,6 +77,7 @@ export const reviewRoutes: FeatureRoute[] = [
 ```
 <GuestOnly>                   (Login) a signed-in user → their landing page
 <RequireAuth>                 session pending → full-page loading spinner
+                              /me failed (5xx, network) → MSG06 page with "Try again"
                               no session (401) → /login?returnTo=<current path>
   <AppShell>
     <RequireRole roles=…>     role not in route.roles → ForbiddenPage (MSG08), URL unchanged

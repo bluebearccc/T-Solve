@@ -11,12 +11,13 @@ frontend/
 ├── AGENTS.md · CLAUDE.md · README.md
 ├── guidelines/                      # these files
 ├── openapi/tsolve-api.yaml          # API spec, committed (input of orval)
-├── public/                          # static files copied as-is (favicon, mockServiceWorker.js)
+├── scripts/pull-api.mjs             # npm run api:pull
+├── public/                          # static files copied as-is (favicon). MSW's worker is served by Vite, not committed
 ├── src/
 │   ├── main.tsx                     # starts mocks (if enabled) and renders <App />
 │   ├── app/                         # WIRING ONLY — owner: FE Lead
 │   │   ├── App.tsx
-│   │   ├── providers/               # AppProviders: antd ConfigProvider + App, QueryClientProvider
+│   │   ├── providers/               # AppProviders (antd + query cache), global-errors.ts (401/403/MSG06)
 │   │   ├── router/                  # routes.tsx (route tree), feature-routes.ts, guards.tsx, router.ts
 │   │   ├── dev/                     # DevRoleSwitcher (dev builds only)
 │   │   ├── layout/                  # AppShell, SideMenu, UserMenu, menu-config.ts
@@ -26,15 +27,16 @@ frontend/
 │   │   └── <feature>/               # see §3
 │   ├── shared/                      # REUSABLE, NO BUSINESS FLOW — owner: FE Lead
 │   │   ├── ui/                      # Figma kit v4 components (StatusTag, DataTable, FormField…)
-│   │   ├── api/                     # http.ts (fetch wrapper), errors.ts, query-client.ts
-│   │   │   └── generated/           # orval output — NEVER EDIT
-│   │   ├── auth/                    # useSession, Role, landing page per role
-│   │   ├── messages/                # MSG catalog (SRS V.2) + showMessage / msg helpers
+│   │   ├── api/                     # http.ts (fetch wrapper), errors.ts (ApiError), query-client.ts
+│   │   │   ├── generated/           # orval output — NEVER EDIT
+│   │   │   └── mocks/               # problem() helper for mock handlers (mocks and tests only)
+│   │   ├── auth/                    # useSession (GET /me), Role, landing page per role, dev-role.ts
+│   │   ├── messages/                # MSG catalog (SRS V.2) + msg / showMessage / showAcknowledgement
 │   │   ├── forms/                   # validation rule builders
 │   │   ├── routing/paths.ts         # every screen path
-│   │   ├── lib/                     # tiny pure helpers (date.ts, …)
+│   │   ├── lib/                     # tiny pure helpers (date.ts: formatDate, formatDateTime)
 │   │   └── config/env.ts            # typed access to import.meta.env
-│   ├── mocks/                       # MSW setup: browser.ts, server.ts, handlers.ts
+│   ├── mocks/                       # MSW: handlers.ts (all), session.ts (/me users), browser.ts, server.ts
 │   └── test/                        # test setup, renderApp and renderWithProviders
 ├── .env.example · .nvmrc · .prettierrc · eslint.config.js · orval.config.ts
 ├── tsconfig*.json · vite.config.ts · package.json · package-lock.json
@@ -85,7 +87,7 @@ features/review/
 │   └── RequestChangesModal.tsx # 7.2 (popup)
 ├── hooks/
 │   ├── useReviewQueue.ts
-│   └── useApproveTickets.ts
+│   └── useApproveSelectedTickets.ts
 ├── mocks/handlers.ts
 └── ReviewQueuePage.test.tsx    # tests sit next to what they test
 ```

@@ -9,9 +9,10 @@
 
 ```
 openapi/tsolve-api.yaml ──(npm run generate:api)──► src/shared/api/generated/   NEVER EDIT
-                                                     ├── model/      types
-                                                     └── <tag>/      useGetX / useX hooks + query-key functions
-src/shared/api/index.ts      re-exports generated code + ApiError + http helpers
+                                                     ├── model/            types + enum constants
+                                                     ├── <tag>/<tag>.ts    request functions, useX hooks, getXQueryKey
+                                                     └── <tag>/<tag>.msw.ts  MSW handlers + faker data (mocks/tests only)
+src/shared/api/index.ts      re-exports generated code and types + ApiError + createQueryClient
 features/<f>/hooks/useX.ts   wraps a generated hook: options, invalidation, MSG toasts
 features/<f>/pages/…         calls feature hooks only
 ```
@@ -25,19 +26,22 @@ features/<f>/pages/…         calls feature hooks only
 
 - `orval.config.ts` generates TanStack Query hooks (`client: 'react-query'`) using the native `fetch`
   transport through our wrapper `src/shared/api/http.ts` (`override.mutator`), split by OpenAPI tag
-  (`mode: 'tags-split'`), plus MSW mock handlers with fake data for every endpoint.
-- `http.ts` is the only place that touches `fetch`. It adds the base URL, sends the session cookie
-  (same origin: the Vite proxy in dev, Caddy in production), parses JSON and turns every non-2xx response
-  into an `ApiError` (§6).
+  (`mode: 'tags-split'`), plus MSW mock handlers with fake data for every endpoint. Hooks return the
+  response body (`includeHttpResponseReturnType: false`), and their error type is `ApiError` (`http.ts`
+  exports `ErrorType`, which orval picks up).
+- `http.ts` is the only place that touches `fetch`. It adds the base URL (`VITE_API_BASE_URL`, empty = same
+  origin: the Vite proxy in dev, Caddy in production), sends the session cookie, parses JSON (204 → `undefined`)
+  and turns every non-2xx response — and network errors — into an `ApiError` (§6).
 - Both the spec and the generated code are committed. *Why:* the app runs right after `npm ci` with no
   backend, and every API change is visible in the PR diff.
 
 **When an endpoint changes** (one PR — DevOps design "one feature = one PR"):
 
 1. Backend changes the controller/DTO.
-2. With the backend running, `npm run api:pull` downloads its spec into `openapi/tsolve-api.yaml`
-   (or edit the YAML by hand while the endpoint doesn't exist yet — the stub is how frontend work starts
-   before the backend is ready).
+2. With the backend running, `npm run api:pull` downloads its spec (springdoc,
+   `http://localhost:8080/v3/api-docs.yaml`; other URL: `API_DOCS_URL=… npm run api:pull`) into
+   `openapi/tsolve-api.yaml` — or edit the YAML by hand while the endpoint doesn't exist yet (the stub is how
+   frontend work starts before the backend is ready).
 3. `npm run generate:api`.
 4. Fix the type errors that appear (`npm run typecheck`) — they show exactly which screens are affected.
 5. Commit spec + generated code + fixes together.
@@ -79,7 +83,7 @@ export function useApproveSelectedTickets() {
   return useApproveTickets({
     mutation: {
       onSuccess: (result) => {
-        showMessage('MSG18', { count: result.approvedCount });
+        showMessage('MSG18', { count: result.count });
         return queryClient.invalidateQueries({ queryKey: getGetReviewQueueQueryKey() });
       },
     },
@@ -87,8 +91,10 @@ export function useApproveSelectedTickets() {
 }
 ```
 
-*(Hook and type names come from `operationId`s in the spec; the ones above are from our stub and will
-be confirmed when the scaffold is generated.)*
+Names come from each `operationId` in the spec: `getReviewQueue` → `getReviewQueue()` (plain request
+function), `useGetReviewQueue`, `getGetReviewQueueQueryKey`, `GetReviewQueueParams`; `approveTickets` →
+`useApproveTickets`. The stub's operations today: `getMe`, `logout`, `getReviewQueue`,
+`getReviewQueueTicketIds`, `approveTickets`, `rejectTickets`, `requestTicketChanges`.
 
 ## 4. Query keys, caching, invalidation
 
@@ -110,7 +116,9 @@ be confirmed when the scaffold is generated.)*
 - **No optimistic updates** in the MVP. Wait for the server, then invalidate. *Why:* simpler, and the
   NFR (confirmation within 2 s) does not need them.
 - **Server-side pagination, 20 rows per page** (SRS III default). Page, size and sort go to the API as
-  query params and live in the URL (see [05](05-react-components.md) C8).
+  query params and live in the URL (see [05](05-react-components.md) C8). Spring conventions: `page` starts
+  at **0** (antd's Pagination shows 1 — convert), `sort=field,asc|desc`, and a page comes back as
+  `{ content: [...], page: { size, number, totalElements, totalPages } }`.
 
 ## 5. Loading, error, empty
 
@@ -120,6 +128,10 @@ be confirmed when the scaffold is generated.)*
 | `isError` | the request failed | `ErrorState` with retry (MSG06) — unless the global handler redirected (401/403) |
 | `isFetching && !isPending` | background refetch (polling, focus) | nothing, or a subtle spinner — never blank the screen |
 | data with 0 items | empty | `EmptyState` with MSG04, or the screen's code (MSG16 Review Queue) |
+
+`ErrorState` gets its retry action from the page (`onRetry={() => void query.refetch()}`). Never call the
+same query hook *inside* the error component: a new observer of a failed query refetches it on mount, the
+page goes back to loading, the error component unmounts and remounts — an endless request loop.
 
 For mutations: disable the confirm button and show its loading state while `isPending`; never allow a
 double submit.
@@ -139,9 +151,10 @@ Every error response is an RFC 9457 **Problem Details** object (Spring's `Proble
 }
 ```
 
-`http.ts` converts it into `ApiError { status, code: MsgCode, params, fieldErrors }`. A response without
-a known `code` becomes `code: 'MSG06'`. *(This contract is our proposal; the backend must implement it —
-it is recorded in the decision log.)*
+`http.ts` converts it into `ApiError { status, code: MsgCode, params, fieldErrors }` (`shared/api/errors.ts`).
+`code` is always a code from our catalog: the backend's code when we know it, otherwise **MSG07** for 401,
+**MSG08** for 403 and **MSG06** for everything else. A network failure is `status: 0`, `MSG06`.
+*(This contract is our proposal; the backend must implement it — it is recorded in the decision log.)*
 
 ### The catalog
 `src/shared/messages/catalog.ts` holds every **active** MSG code from SRS V.2 with its exact English
@@ -149,8 +162,12 @@ text and its display type. Texts are templates (`{count} ticket(s) approved and 
 
 ```ts
 msg('MSG02', { field_name: 'Reason', max_length: 1000 })  // → string, for field errors and inline text
-showMessage('MSG18', { count: 3 })                         // → toast (success/info/error by catalog type)
+showMessage('MSG18', { count: 3 })                         // → toast; level from the catalog (error if not a toast code)
+await showAcknowledgement('MSG07')                         // → dialog with only OK; resolves when clicked
 ```
+
+`showMessage` / `showAcknowledgement` work outside React too (the global error handler uses them):
+`<MessageHost />`, rendered once by `AppProviders`, connects them to antd's App context.
 
 ✅ Do: `showMessage('MSG30')`  ❌ Don't: `message.success('Ticket unpublished.')` 🔒 (raw `message` banned)
 
@@ -166,22 +183,30 @@ showMessage('MSG18', { count: 3 })                         // → toast (success
 
 ### Who handles which error
 
+The global part lives in `app/providers/global-errors.ts` (wired into the QueryClient by `AppProviders`).
+
 | Error | Handled by | Behaviour |
 |---|---|---|
-| 401 (no or expired session) | global (`query-client.ts`) | MSG07 dialog → `/login`, cache cleared |
-| 403 | global for pages; feature for actions | page → 403 screen with MSG08; action → toast MSG08 |
-| network error / 5xx / unknown code | global | toast MSG06 |
-| business error with a code (4xx) on a **form** | the feature | map `fieldErrors` onto fields; otherwise `showMessage(code)` |
-| business error on a page action (e.g. MSG95 on Finish) | the feature | show where the SRS says (in page or toast) |
+| 401 on any request while signed in | global | MSG07 dialog (once, however many requests failed) → OK → cache dropped → the route guard sends the user to Login with `returnTo` |
+| 401 on `GET /me` | `useSession` | not an error: nobody is signed in |
+| a **query** fails (403, 404, 5xx, network) | the screen | `ErrorState` in place with `msg(error.code)` — MSG08 for 403, MSG06 for 5xx. No toast. A role that may not open the screen at all gets the 403 page from the route guard first. |
+| a **mutation** fails | global | toast with `msg(error.code, error.params)` — MSG08 for 403, MSG06 for 5xx / network |
+| business error with a code (4xx) on a **form** | the feature | `meta: { handlesOwnErrors: true }` + map `fieldErrors` onto the fields ([09](09-forms-and-validation.md)) |
+| business error on a page action (e.g. MSG95 on Finish) | the feature | `meta: { handlesOwnErrors: true }` + show it where the SRS says (in page or toast) |
 
-To stop the global toast for a mutation that shows its own error, set `meta: { handlesOwnErrors: true }`
-on that mutation. Never show two messages for one error.
+`meta: { handlesOwnErrors: true }` on a mutation turns the global toast off for it. Never show two
+messages for one error. Retries: queries retry once, except 4xx (never); mutations never retry.
 
 ## 7. Session
 
-`useSession()` (in `shared/auth`) wraps the generated `GET /api/v1/me` query (`staleTime: Infinity`) and
-returns `{ user, role, projects, departments }`. It is the only source of "who am I" — never store the
-user elsewhere. Log out = call the logout endpoint, clear the query cache, go to `/login`.
+`useSession()` (in `shared/auth`) runs the generated `GET /api/v1/me` request (`staleTime: Infinity`; 401 →
+`null`) and returns `{ session, role, isPending, isError, retry, isProjectManagerOf, isMemberOf }`;
+`session` is the generated `CurrentUser` (`user`, `role`, `projects` with the role in each, `departments`).
+It is the only source of "who am I" — never store the user elsewhere.
+
+`useSignOut()` calls `POST /api/v1/auth/logout`, then `resetSession()`: every other cached query and mutation
+is dropped (they belong to the previous user) and the session reloads in place, so mounted guards react at
+once. The expired-session flow and the dev role switcher use the same `resetSession()`.
 
 ## 8. Checklist
 

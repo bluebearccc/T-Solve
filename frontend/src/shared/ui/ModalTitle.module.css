@@ -1,0 +1,16 @@
+/* Figma "Web/Modal Header": optional 22 px icon + H3 title, 12 apart. */
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--ant-margin-sm);
+}
+
+.warning {
+  font-size: 22px;
+  color: var(--ant-color-warning);
+}
+
+.danger {
+  font-size: 22px;
+  color: var(--ant-color-error);
+}

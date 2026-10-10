@@ -73,7 +73,7 @@ export function useReviewQueue(params: GetReviewQueueParams) {
 ```
 
 ```ts
-// features/review/hooks/useApproveSelectedTickets.ts
+// features/review/hooks/useReviewDecisions.ts (with useRejectSelectedTickets, useRequestChangesForTickets)
 import { useQueryClient } from '@tanstack/react-query';
 import { getGetReviewQueueQueryKey, useApproveTickets } from '@/shared/api';
 import { showMessage } from '@/shared/messages';

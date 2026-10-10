@@ -1,0 +1,8 @@
+/* Figma 7.1: Department select 240 wide; the count sits on the buttons' baseline. */
+.department {
+  width: 240px;
+}
+
+.count {
+  padding-bottom: var(--ant-padding-xxs);
+}

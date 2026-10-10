@@ -127,7 +127,8 @@ describe('ReviewQueuePage', () => {
 });
 ```
 
-*(Endpoint path and response shape are the OpenAPI stub's; this example becomes the real test in step 5.4.)*
+*(Shortened. The full test — popups, Select all, Department filter, error state — is
+`features/review/pages/ReviewQueuePage.test.tsx`.)*
 
 ## 5. Mock handlers (mock mode and tests use the same ones)
 
@@ -138,7 +139,9 @@ src/mocks/handlers.ts — every handler, first match wins:
   3. orval's generated *.msw.ts      faker data for every other endpoint in the spec        generated
 ```
 
-- Write your feature's handlers in `features/<f>/mocks/handlers.ts` (it is already registered). Start from the
+- Write your feature's handlers in `features/<f>/mocks/handlers.ts` (it is already registered). Keep mutable
+  mock data in a module variable and restore it in the file's `resetMockData()` — it runs after every test,
+  so a ticket approved in one test is back in the next (example: `features/review/mocks/`). Start from the
   generated typed handler and give it realistic data — real-looking ticket IDs, titles, Projects, Vietnamese
   names, every status your screen shows:
   ```ts
@@ -160,6 +163,11 @@ src/mocks/handlers.ts — every handler, first match wins:
 | `npm run test` | once, all tests (CI runs this) |
 | `npm run test:watch` | while developing |
 | `npx vitest run src/features/review` | only one feature |
+
+Page tests are slow in jsdom (an antd table with 20 rows takes 2–5 s per test), so the test timeout is
+15 s (`vite.config.ts`). The first `findBy…` in a file also loads the lazy page module: give it
+`{ timeout: 5000 }` as `ReviewQueuePage.test.tsx` does. Don't raise timeouts further — a test that needs
+more is doing too much; split it.
 
 ## 7. Checklist
 

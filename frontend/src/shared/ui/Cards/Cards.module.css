@@ -1,0 +1,10 @@
+/* Figma "Web/Card": radius 12 (theme Card token), padding 24, shadow/card. Stat value = text style "Number" 30/38. */
+.card {
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.statValue {
+  font-size: 30px;
+  line-height: 38px;
+  font-weight: 600;
+}

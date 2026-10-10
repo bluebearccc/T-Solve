@@ -27,8 +27,8 @@ Example: Jira issue `TS-57` "6.2 Ticket List" in feature `tickets`.
    MSG toasts for mutations. ([06](06-data-layer.md) §3–4)
 7. **Components:** build the screen from kit components ([07](07-ui-and-styling.md)); forms and popups
    per [09](09-forms-and-validation.md).
-8. **Mocks:** realistic data in `mocks/handlers.ts` — real-looking ticket IDs, titles, Projects, all
-   relevant statuses, an empty case. Run `VITE_API_MOCKING=true npm run dev` and click through every role
+8. **Mocks:** realistic data in `mocks/handlers.ts` (+ `resetMockData()`) — real-looking ticket IDs, titles,
+   Projects, all relevant statuses, an empty case ([10](10-testing.md) §5). Run `VITE_API_MOCKING=true npm run dev` and click through every role
    that can open the screen (use the dev role switcher).
 9. **Tests:** at least the page test (happy, empty, error) and one per mutation flow. ([10](10-testing.md))
 10. **Checks:** `npm run lint && npm run typecheck && npm run test`, then compare the screen with the Figma

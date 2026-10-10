@@ -21,6 +21,8 @@ export default defineConfig({
     proxy: { '/api': 'http://localhost:8080' },
   },
   build: {
+    // The antd chunk is ~800 kB (~260 kB gzipped) and cached as one file; see decision FE-29.
+    chunkSizeWarningLimit: 1000,
     rolldownOptions: {
       output: {
         // Libraries in their own chunks: they change rarely, so browsers keep them cached across deploys.
@@ -46,5 +48,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Page tests render antd tables in jsdom and take 2–5 s each; 5 s (the default) fails on a busy laptop.
+    testTimeout: 15_000,
   },
 });

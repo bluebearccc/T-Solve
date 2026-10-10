@@ -15,7 +15,7 @@ frontend/
 ├── public/                          # static files copied as-is (favicon). MSW's worker is served by Vite, not committed
 ├── src/
 │   ├── main.tsx                     # starts mocks (if enabled) and renders <App />
-│   ├── app/                         # WIRING ONLY — owner: FE Lead
+│   ├── app/                         # WIRING ONLY — owner: FE Lead (dev/: role switcher, /dev/kit page)
 │   │   ├── App.tsx
 │   │   ├── providers/               # AppProviders (antd + query cache), global-errors.ts (401/403/MSG06)
 │   │   ├── router/                  # routes.tsx (route tree), feature-routes.ts, guards.tsx, router.ts
@@ -32,9 +32,9 @@ frontend/
 │   │   │   └── mocks/               # problem() helper for mock handlers (mocks and tests only)
 │   │   ├── auth/                    # useSession (GET /me), Role, landing page per role, dev-role.ts
 │   │   ├── messages/                # MSG catalog (SRS V.2) + msg / showMessage / showAcknowledgement
-│   │   ├── forms/                   # validation rule builders
-│   │   ├── routing/paths.ts         # every screen path
-│   │   ├── lib/                     # tiny pure helpers (date.ts: formatDate, formatDateTime)
+│   │   ├── forms/                   # rules (MSG01/02/03/44) + applyApiErrors
+│   │   ├── routing/                 # paths.ts (every screen path), useListSearchParams
+│   │   ├── lib/                     # tiny pure helpers: date.ts, labels.ts (source labels), paging.ts
 │   │   └── config/env.ts            # typed access to import.meta.env
 │   ├── mocks/                       # MSW: handlers.ts (all), session.ts (/me users), browser.ts, server.ts
 │   └── test/                        # test setup, renderApp and renderWithProviders
@@ -81,16 +81,23 @@ features/review/
 │   ├── ReviewQueuePage.tsx     # 7.1
 │   ├── ReviewHistoryPage.tsx   # 7.4
 │   └── ExpiredTicketsPage.tsx  # 7.5
+│   ├── ReviewQueuePage.module.css
+│   └── ReviewQueuePage.test.tsx    # tests sit next to what they test
 ├── components/
+│   ├── ReviewQueueToolbar.tsx      # filter, selection count, decision buttons
 │   ├── ReviewQueueTable.tsx
-│   ├── RejectTicketModal.tsx   # 7.3 (popup)
-│   └── RequestChangesModal.tsx # 7.2 (popup)
+│   ├── RejectTicketModal.tsx       # 7.3 (popup)
+│   └── RequestChangesModal.tsx     # 7.2 (popup)
 ├── hooks/
-│   ├── useReviewQueue.ts
-│   └── useApproveSelectedTickets.ts
-├── mocks/handlers.ts
-└── ReviewQueuePage.test.tsx    # tests sit next to what they test
+│   ├── useReviewQueue.ts           # polling every 5 s
+│   ├── useQueueTicketIds.ts        # "Select all" = every ticket in the queue
+│   └── useReviewDecisions.ts       # approve / reject / request changes + MSG toasts
+└── mocks/
+    ├── data.ts                     # 58 realistic tickets (the Figma ones first)
+    └── handlers.ts                 # handlers + resetMockData()
 ```
+
+This is the **reference implementation** (decision FE-23): when in doubt, copy how `review` does it.
 
 - Every feature folder and every screen's page file already exist; a page starts as a `ScreenPlaceholder`
   that the owner replaces with the real screen.

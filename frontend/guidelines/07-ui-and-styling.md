@@ -55,12 +55,13 @@ Each "Web/…" component maps to exactly one thing in code. Props mirror the Fig
 | Web/Checkbox · Web/Tooltip · Web/Tabs · Web/Pagination · Web/Alert · Web/Descriptions | antd `Checkbox` · `Tooltip` · `Tabs` (`items`) · (inside `DataTable`) · `Alert` · `Descriptions` | tokens only |
 | Web/Toast (Success/Error/Info) | `showMessage(code)` from `@/shared/messages` | never antd `message` directly |
 | Web/Form Field (Input/TextArea/Select/Date range/Search × states) | `FormField` + antd inputs | see [09](09-forms-and-validation.md) |
-| Web/Status Tag | `StatusTag` (`status` prop, typed union) | colours and labels defined only here |
-| Web/Table (Header Cell, Cell Kind=Text/Link/Tag/Actions/Checkbox) + Web/Pagination | `DataTable` + `cells.text/link/tag/actions` | 20 rows/page, sortable, row selection, empty/loading/error built in |
-| Web/Empty & Loading | `EmptyState` (`code`, default MSG04) · `LoadingState` · `ErrorState` | |
-| Web/Card (Kind=Section / Stat) | `SectionCard` · `StatCard` | |
-| Web/Modal (Confirm / Danger confirm) + Header/Footer | `ConfirmDialog` (`code`, `danger`) · `FormModal` | |
-| Web/Upload (Idle/Dragging/File listed/File error) | `EvidenceUpload` · `CsvUpload` | limits and MSG40/MSG62/MSG33/MSG34 built in |
+| Web/Status Tag | `StatusTag` (`status`: API value, e.g. `"PENDING_REVIEW"`) | colours and labels defined only in `STATUS_TAGS` |
+| Web/Table (Header Cell, Cell Kind=Text/Link/Tag/Checkbox) + Web/Pagination | `DataTable` (`label`, `columns` with `key` + `sortable`, `rows`, `rowKey`, `loading`, `error`/`onRetry`, `emptyCode`, `pagination`, `sort`/`onSortChange`, `rowSelection`, `scrollX`) + `cells.text/link/tag/dateTime` | 20 rows/page, "Total N items", server sort, one-line cells with "…" |
+| Web/Empty & Loading | `EmptyState` (`code`, default MSG04) · `LoadingState` · `ErrorState` (`error`, `onRetry`) | |
+| Web/Card (Kind=Section / Stat) | `SectionCard` (`title`, `children`) · `StatCard` (`label`, `value`) | |
+| Web/Modal Kind=Confirm / Danger confirm | `ConfirmDialog` (`isOpen`, `code`, `params`, `isDanger`, `okText`, `isConfirming`, `onConfirm`, `onCancel`) | centred, 520 wide |
+| Web/Modal Header (Form / Danger) + content + Web/Modal Footer | `FormModal` (`isOpen`, `title`, `kind`, `width`, `form`, `okText`, `isOkDanger`, `isSubmitting`, `onSubmit`, `onCancel`) | centred; form cleared when closed |
+| Web/Upload (Idle/Dragging/File listed/File error) | `EvidenceUpload` · `CsvUpload` — **not built yet** (FE Lead, before the first screen that needs them) | limits and MSG40/MSG62/MSG33/MSG34 built in |
 | Web/App Shell (Role=4) + Web/Menu Item | `app/layout/AppShell` + `SideMenu` | §5 |
 | Icons (Ant Design Icons) | `@ant-design/icons`, same names (`Icon/Inbox` → `InboxOutlined`) | |
 | *(part of every form, no own component)* | `AppForm` | antd `Form` with our defaults ([09](09-forms-and-validation.md)) |
@@ -69,7 +70,10 @@ Each "Web/…" component maps to exactly one thing in code. Props mirror the Fig
 Pending review · Changes requested · Published · Rejected · Unpublished · Expired · Active · Deactivated ·
 Removed · Connected · Not connected · Completed · Failed · Valid · Error.
 
-**`/dev/kit` page** (dev builds only): every kit component in every variant on one page. Use it to compare
+Table look (Figma "Web/Table"): cell padding 12 × 8, header on bg/subtle with Body Strong (Inter Medium)
+titles, no tint on the sorted column — set once as `Table` component tokens in `theme.ts`.
+
+**`/dev/kit` page** (dev builds only, any signed-in role): every kit component in every variant on one page. Use it to compare
 with the Figma section side by side and to find what already exists.
 
 ## 4. Rules

@@ -25,8 +25,9 @@ npm run dev               # http://localhost:5173
 ### Run without the backend (mock mode)
 
 Set `VITE_API_MOCKING=true` in `.env.local` (the default in `.env.example`). Every API call is answered by
-MSW mocks, and a small **role switcher** (dev builds only) lets you see the app as Admin, Department
-Manager, Project Manager or Staff.
+MSW mocks (`src/mocks/`, plus each feature's `mocks/handlers.ts`). A small **role switcher** (dev builds in
+mock mode only) picks which fixture user `GET /api/v1/me` returns, so you can see the app as Admin, Department
+Manager, Project Manager or Staff — or signed out.
 
 ### Run against the real backend
 

@@ -76,7 +76,9 @@ function handleFinish(values: RejectTicketsRequest) {
 - **On failure, keep everything the user typed** (NFR "data never lost when validation fails"). Reset only
   after success or when the user cancels.
 - `applyApiErrors(form, error)` puts each `fieldErrors[]` item under its field (`form.setFields`) and
-  returns `true`; if there are none it returns `false` and the global/feature handler shows the message
+  returns `true`; if there are none it returns `false` and the feature shows the message with
+  `showMessage(error.code, error.params)`. Because the form handles its own errors, its feature hook sets
+  `meta: { handlesOwnErrors: true }` on the mutation, which turns the global error toast off
   ([06](06-data-layer.md) §6).
 
 ## 4. Popups with forms (`FormModal`)

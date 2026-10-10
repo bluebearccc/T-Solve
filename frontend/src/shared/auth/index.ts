@@ -1,5 +1,5 @@
 export { ROLES, ROLE_LABELS, type Role } from './roles';
 export type { Session } from './session';
-export { SESSION_QUERY_KEY, useSession, useSignOut } from './useSession';
+export { resetSession, SESSION_QUERY_KEY, useSession, useSignOut } from './useSession';
 export { LANDING_PATHS } from './landing';
-export { getDevRole, setDevRole } from './dev-session';
+export { getDevRole, setDevRole } from './dev-role';

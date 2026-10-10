@@ -2,13 +2,15 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { LANDING_PATHS, useSession, type Role } from '@/shared/auth';
 import { paths } from '@/shared/routing';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
+import { SessionErrorPage } from '../pages/SessionErrorPage';
 import { FullPageLoading } from './FullPageLoading';
 
 /** Signed-in users only; others go to Login and come back afterwards (guideline 08 §3). */
 export function RequireAuth() {
-  const { session, isPending } = useSession();
+  const { session, isPending, isError, retry } = useSession();
   const location = useLocation();
   if (isPending) return <FullPageLoading />;
+  if (isError) return <SessionErrorPage onRetry={() => void retry()} />;
   if (!session) {
     const returnTo = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`${paths.login}?returnTo=${returnTo}`} replace />;
@@ -25,8 +27,9 @@ export function RequireRole({ roles }: { roles: readonly Role[] }) {
 
 /** Login is for signed-out users; a signed-in user goes to their landing page. */
 export function GuestOnly() {
-  const { session, isPending } = useSession();
+  const { session, isPending, isError, retry } = useSession();
   if (isPending) return <FullPageLoading />;
+  if (isError) return <SessionErrorPage onRetry={() => void retry()} />;
   if (session) return <Navigate to={LANDING_PATHS[session.role]} replace />;
   return <Outlet />;
 }

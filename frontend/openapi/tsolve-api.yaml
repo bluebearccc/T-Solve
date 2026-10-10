@@ -1,0 +1,420 @@
+openapi: 3.1.0
+info:
+  title: T-Solve API
+  version: 0.1.0-stub
+  description: >
+    STUB written by the frontend (scaffold step 5.3) so the web app can be built before the backend exists.
+    It is replaced by the backend's real spec with `npm run api:pull`. Every shape here is a proposal that the
+    backend must agree to (frontend guideline 06 §6 and the decision log): Problem Details errors with an MSG
+    `code`, Spring-style paging (`page` from 0, `size`, `sort`), and the `/me` session shape.
+tags:
+  - name: session
+    description: Who is signed in.
+  - name: review
+    description: Review Queue and review decisions (SRS III.7).
+paths:
+  /api/v1/me:
+    get:
+      tags: [session]
+      operationId: getMe
+      summary: The signed-in user, their role, Projects and Departments.
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Problem'
+  /api/v1/auth/logout:
+    post:
+      tags: [session]
+      operationId: logout
+      summary: Ends the session (the backend clears the session cookie).
+      responses:
+        '204':
+          description: Signed out.
+  /api/v1/review-queue:
+    get:
+      tags: [review]
+      operationId: getReviewQueue
+      summary: Pending review tickets of the Projects the user is Project Manager of (SRS 7.1).
+      parameters:
+        - name: departmentId
+          in: query
+          description: One Department; omitted = all Departments of the Project Manager.
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: One page of the queue. Default sort reviewDueDate,asc.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewQueuePage'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '403':
+          $ref: '#/components/responses/Problem'
+  /api/v1/review-queue/ticket-ids:
+    get:
+      tags: [review]
+      operationId: getReviewQueueTicketIds
+      summary: Ids of every ticket in the queue, for "Select all" (all pages, not only the one shown).
+      parameters:
+        - name: departmentId
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: All ticket ids in the queue for the filter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketIdList'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '403':
+          $ref: '#/components/responses/Problem'
+  /api/v1/reviews/approve:
+    post:
+      tags: [review]
+      operationId: approveTickets
+      summary: Approves and publishes the tickets (MSG18).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveTicketsRequest'
+      responses:
+        '200':
+          description: Approved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDecisionResult'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+  /api/v1/reviews/reject:
+    post:
+      tags: [review]
+      operationId: rejectTickets
+      summary: Rejects the tickets with one reason (MSG19 confirm, MSG20 result).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectTicketsRequest'
+      responses:
+        '200':
+          description: Rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDecisionResult'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+  /api/v1/reviews/request-changes:
+    post:
+      tags: [review]
+      operationId: requestTicketChanges
+      summary: Sends the tickets back to their authors with one comment (MSG21).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestChangesRequest'
+      responses:
+        '200':
+          description: Changes requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewDecisionResult'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number, starting at 0.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Rows per page (SRS default 20).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: '"field,asc" or "field,desc"; may repeat.'
+      schema:
+        type: array
+        items:
+          type: string
+  responses:
+    Problem:
+      description: Error (RFC 9457 Problem Details with an SRS MSG code).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+  schemas:
+    Role:
+      type: string
+      enum: [ADMIN, DEPARTMENT_MANAGER, PROJECT_MANAGER, STAFF]
+    ProjectRole:
+      type: string
+      description: The user's role inside one Project.
+      enum: [PROJECT_MANAGER, MEMBER]
+    TicketSource:
+      type: string
+      enum: [SOLUTION_FORM, JIRA_IMPORT, CSV, MANUAL]
+    UserSummary:
+      type: object
+      required: [id, fullName, email]
+      properties:
+        id:
+          type: integer
+          format: int64
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+    ProjectMembership:
+      type: object
+      required: [projectId, jiraProjectKey, departmentId, departmentName, roleInProject]
+      properties:
+        projectId:
+          type: integer
+          format: int64
+        jiraProjectKey:
+          type: string
+        departmentId:
+          type: integer
+          format: int64
+        departmentName:
+          type: string
+        roleInProject:
+          $ref: '#/components/schemas/ProjectRole'
+    DepartmentRef:
+      type: object
+      required: [departmentId, name]
+      properties:
+        departmentId:
+          type: integer
+          format: int64
+        name:
+          type: string
+    CurrentUser:
+      type: object
+      description: >
+        The signed-in user (SRS 1.2.1). projects = Projects the user belongs to with their role in each (empty for
+        Admin and Department Manager); departments = the user's Departments (from their Projects, or the ones a
+        Department Manager manages).
+      required: [user, role, projects, departments]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        role:
+          $ref: '#/components/schemas/Role'
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectMembership'
+        departments:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepartmentRef'
+    ProjectRef:
+      type: object
+      required: [projectId, name]
+      properties:
+        projectId:
+          type: integer
+          format: int64
+        name:
+          type: string
+    ReviewQueueItem:
+      type: object
+      required: [ticketId, sourceTicketId, title, project, source, enteredQueueAt, reviewDueDate]
+      properties:
+        ticketId:
+          type: integer
+          format: int64
+        sourceTicketId:
+          type: string
+          description: The Jira issue key, e.g. ITSUP-1031.
+        title:
+          type: string
+        project:
+          $ref: '#/components/schemas/ProjectRef'
+        source:
+          $ref: '#/components/schemas/TicketSource'
+        authorName:
+          type: [string, 'null']
+          description: T-Solve user, or the Jira assignee name; may be empty.
+        enteredQueueAt:
+          type: string
+          format: date-time
+        reviewDueDate:
+          type: string
+          format: date-time
+    PageMetadata:
+      type: object
+      description: Spring Data PagedModel metadata.
+      required: [size, number, totalElements, totalPages]
+      properties:
+        size:
+          type: integer
+        number:
+          type: integer
+          description: Current page, starting at 0.
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    ReviewQueuePage:
+      type: object
+      required: [content, page]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewQueueItem'
+        page:
+          $ref: '#/components/schemas/PageMetadata'
+    TicketIdList:
+      type: object
+      required: [ticketIds]
+      properties:
+        ticketIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+    ApproveTicketsRequest:
+      type: object
+      required: [ticketIds]
+      properties:
+        ticketIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            format: int64
+    RejectTicketsRequest:
+      type: object
+      required: [ticketIds, reason]
+      properties:
+        ticketIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            format: int64
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Stored in Review History; not sent to the author.
+    RequestChangesRequest:
+      type: object
+      required: [ticketIds, comment]
+      properties:
+        ticketIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            format: int64
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Shown to each author in Jira (MSG53).
+    ReviewDecisionResult:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          description: Number of tickets the decision was applied to (the {count} of MSG18 / MSG20 / MSG21).
+    FieldError:
+      type: object
+      required: [field, code]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+          description: SRS message code, e.g. MSG47.
+        params:
+          type: object
+          additionalProperties:
+            type: [string, number]
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Details (Spring ProblemDetail) plus the SRS message code.
+      required: [status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+          description: SRS message code, e.g. MSG47. Missing or unknown = the web app shows MSG06.
+        params:
+          type: object
+          description: Values for the message template, e.g. {"department_name":"IT"}.
+          additionalProperties:
+            type: [string, number]
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'

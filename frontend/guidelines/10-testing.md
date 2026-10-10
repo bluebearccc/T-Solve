@@ -13,7 +13,8 @@
 | **React Testing Library** + **user-event** | render components and act like a user (click, type, Tab) |
 | **jsdom** | browser-like DOM in Node |
 | **MSW 3** | intercepts `fetch` and answers with the same handlers used in mock mode — tests go through the real `http.ts`, generated hooks and TanStack Query |
-| `src/test/render.tsx` | `renderApp(path, { role })` — the whole app (real routes, guards, AppShell) at a URL · `renderWithProviders(ui, { role })` — one component with theme, antd and a fresh QueryClient (no retries). `role: null` = signed out. |
+| `src/test/render.tsx` | `renderApp(path, { role })` — the whole app (real routes, guards, AppShell) at a URL · `renderWithProviders(ui, { role })` — one component with theme, antd and a fresh QueryClient. Both use the app's real QueryClient (global error handling included) without retries, return it as `queryClient`, and set who the `/me` mock returns (`role: null` = signed out). |
+| `src/test/setup.ts` | starts the MSW server for every test file; a request with **no** handler fails the test (`onUnhandledFrame: 'error'`); handlers are reset after each test |
 
 Not adopted (on purpose): E2E (Playwright/Cypress), snapshot tests, coverage thresholds, component
 screenshots. *Why:* high upkeep for a 14-week MVP; the Tester's system and acceptance tests (Report 5)
@@ -55,8 +56,15 @@ Use MSW handlers (`server.use(...)` to override per test). Don't `vi.mock` the A
 *Why:* mocking hooks skips the code most likely to be wrong — params, keys, invalidation, error mapping.
 
 ```ts
-// ✅ Do — override one endpoint for this test
-server.use(http.get('*/api/v1/review-queue', () => HttpResponse.json({ items: [], total: 0 })));
+// ✅ Do — override one endpoint for this test, with orval's typed handler (the body is type-checked)
+server.use(
+  getGetReviewQueueMockHandler({
+    content: [],
+    page: { size: 20, number: 0, totalElements: 0, totalPages: 0 },
+  }),
+);
+// ✅ Do — an error in the agreed format (Problem Details + MSG code)
+server.use(http.post('*/api/v1/reviews/reject', () => problem(409, 'MSG47')));
 
 // ❌ Don't
 vi.mock('@/shared/api', () => ({ useGetReviewQueue: () => ({ data: [] }) }));
@@ -67,7 +75,7 @@ vi.mock('@/shared/api', () => ({ useGetReviewQueue: () => ({ data: [] }) }));
 the text by hand differently.
 
 ### T4 — Every test is independent.
-A fresh QueryClient per render (done by `renderWithProviders`), MSW handlers reset after each test
+A fresh QueryClient per render (done by `renderApp` / `renderWithProviders`), MSW handlers reset after each test
 (done in `src/test/setup.ts`), no shared mutable fixtures. Vitest 5 clears mocks between tests by default.
 
 ### T5 — Wait for the UI, never for time.
@@ -83,31 +91,35 @@ Test file sits next to its subject: `ReviewQueuePage.test.tsx`. `describe` = the
 
 ```tsx
 // features/review/ReviewQueuePage.test.tsx
-import { http, HttpResponse } from 'msw';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server } from '@/mocks/server';
-import { renderWithProviders } from '@/test/render';
+import { getGetReviewQueueMockHandler } from '@/shared/api/generated/review/review.msw';
 import { msg } from '@/shared/messages';
-import ReviewQueuePage from './pages/ReviewQueuePage';
+import { renderApp } from '@/test/render';
 
 describe('ReviewQueuePage', () => {
   it('lists pending tickets of my Projects', async () => {
-    renderWithProviders(<ReviewQueuePage />, { role: 'PROJECT_MANAGER' });
-    expect(await screen.findByRole('row', { name: /TS-101/ })).toBeInTheDocument();
+    renderApp('/review-queue', { role: 'PROJECT_MANAGER' });
+    expect(await screen.findByRole('row', { name: /ITSUP-1031/ })).toBeInTheDocument();
   });
 
   it('shows MSG16 when no tickets are waiting', async () => {
-    server.use(http.get('*/api/v1/review-queue', () => HttpResponse.json({ items: [], total: 0 })));
-    renderWithProviders(<ReviewQueuePage />, { role: 'PROJECT_MANAGER' });
+    server.use(
+      getGetReviewQueueMockHandler({
+        content: [],
+        page: { size: 20, number: 0, totalElements: 0, totalPages: 0 },
+      }),
+    );
+    renderApp('/review-queue', { role: 'PROJECT_MANAGER' });
     expect(await screen.findByText(msg('MSG16'))).toBeInTheDocument();
   });
 
   it('asks MSG90 before approving two tickets, then shows MSG18', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ReviewQueuePage />, { role: 'PROJECT_MANAGER' });
-    await user.click(await screen.findByRole('checkbox', { name: /TS-101/ }));
-    await user.click(screen.getByRole('checkbox', { name: /TS-102/ }));
+    renderApp('/review-queue', { role: 'PROJECT_MANAGER' });
+    await user.click(await screen.findByRole('checkbox', { name: /ITSUP-1031/ }));
+    await user.click(screen.getByRole('checkbox', { name: /ITSUP-1102/ }));
     await user.click(screen.getByRole('button', { name: 'Approve' }));
     await user.click(await screen.findByRole('button', { name: 'OK' }));  // MSG90 dialog
     expect(await screen.findByText(msg('MSG18', { count: 2 }))).toBeInTheDocument();
@@ -115,9 +127,33 @@ describe('ReviewQueuePage', () => {
 });
 ```
 
-*(Endpoint path and ticket keys come from the OpenAPI stub; this example becomes the real test in Step 5.)*
+*(Endpoint path and response shape are the OpenAPI stub's; this example becomes the real test in step 5.4.)*
 
-## 5. Running tests
+## 5. Mock handlers (mock mode and tests use the same ones)
+
+```
+src/mocks/handlers.ts — every handler, first match wins:
+  1. src/mocks/session.ts           GET /me (fixture user per role) · POST /auth/logout     FE Lead
+  2. features/<f>/mocks/handlers.ts  realistic data and business errors                    feature owner
+  3. orval's generated *.msw.ts      faker data for every other endpoint in the spec        generated
+```
+
+- Write your feature's handlers in `features/<f>/mocks/handlers.ts` (it is already registered). Start from the
+  generated typed handler and give it realistic data — real-looking ticket IDs, titles, Projects, Vietnamese
+  names, every status your screen shows:
+  ```ts
+  import { getGetReviewQueueMockHandler } from '@/shared/api/generated/review/review.msw';
+  export const handlers: HttpHandler[] = [getGetReviewQueueMockHandler(({ request }) => pageOf(tickets, request))];
+  ```
+- Errors: `problem(status, code?, { params, fieldErrors })` from `@/shared/api/mocks` builds the agreed error
+  body. Latency: `await delay(MOCK_DELAY_MS)` (`delay` from `msw`) — 400 ms in the browser, 0 in tests.
+- Who is signed in: the dev role switcher (browser) or the `role` option of `renderApp` (tests) choose which
+  fixture user `/me` returns (`shared/auth/dev-role.ts`). Fixture users live in `src/mocks/session.ts`.
+- 🔒 `msw`, `@faker-js/faker` and `@/shared/api/mocks` may be imported only in `mocks/` folders and tests, and
+  the generated `*.msw` files only there — app code never ships mock code. `src/mocks` is imported only by
+  tests and `main.tsx` (mock mode, dev builds only).
+
+## 6. Running tests
 
 | Command | When |
 |---|---|
@@ -125,7 +161,7 @@ describe('ReviewQueuePage', () => {
 | `npm run test:watch` | while developing |
 | `npx vitest run src/features/review` | only one feature |
 
-## 6. Checklist
+## 7. Checklist
 
 - [ ] At least one page test for the feature (happy + empty + error).
 - [ ] Each mutation flow you added has a test (confirm → toast → refreshed list).

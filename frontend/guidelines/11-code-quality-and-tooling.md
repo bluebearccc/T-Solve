@@ -30,9 +30,10 @@ No accessibility plugin (the accessibility NFR was removed — decision log FE-2
 
 | Rule | Level | Why |
 |---|---|---|
-| `import-x/no-restricted-paths` | error | The architecture ([01](01-project-structure.md)), as six zones in `eslint.config.js`: a feature imports another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES`); features never import `app/`; `shared` never imports `features`, `app` or `mocks`; `app` uses a feature only through its `index.ts`; `src/mocks` imports only features' `mocks/`; only test files import `src/test` and `src/mocks`. Imports inside one feature are free. The feature list is read from `src/features/`, so a new feature folder is covered automatically. |
+| `import-x/no-restricted-paths` | error | The architecture ([01](01-project-structure.md)), as six zones in `eslint.config.js`: a feature imports another feature only through its `index.ts` and only for the allowed pairs (`ALLOWED_FEATURE_DEPENDENCIES`); features never import `app/`; `shared` never imports `features`, `app` or `mocks` (its tests may use the mock server); `app` uses a feature only through its `index.ts`; `src/mocks` imports only features' `mocks/`; only test files import `src/test` and `src/mocks`. Imports inside one feature are free. The feature list is read from `src/features/`, so a new feature folder is covered automatically. |
 | `no-restricted-imports` (antd `Tag`, `Table`, `Modal`, `Upload`, `message`, `notification` outside `shared/ui`) | error | Use the kit component ([07](07-ui-and-styling.md) U1). The error message names it. |
 | `no-restricted-imports` (`@/shared/api/generated/*`, `react-router-dom`, `axios`) | error | Import from `@/shared/api`; v8 has no `react-router-dom`; one HTTP client. |
+| `no-restricted-imports` (`msw`, `@faker-js/faker`, `@/shared/api/mocks` outside `mocks/` folders and tests) | error | Mock code must never reach the production bundle ([10](10-testing.md) §5). Mock files and tests may also import the generated `*.msw` handlers — nothing else from `generated/`. |
 | `@typescript-eslint/no-explicit-any`, `ban-ts-comment`, `no-non-null-assertion` | error | [04](04-typescript.md) R1–R3. |
 | `@typescript-eslint/consistent-type-imports` | error | `import type` for types (auto-fixable). |
 | `@typescript-eslint/no-floating-promises`, `no-misused-promises` | error | A forgotten `await`/`.catch` hides errors. |
@@ -53,7 +54,7 @@ Never disable a rule for a whole file; never edit `eslint.config.js` in a featur
 ## 3. Prettier
 
 `.prettierrc`: `singleQuote: true`, `semi: true`, `trailingComma: "all"`, `printWidth: 100`.
-`.prettierignore`: `dist/`, `src/shared/api/generated/`, `public/mockServiceWorker.js`,
+`.prettierignore`: `dist/`, `src/shared/api/generated/` (orval formats it with Prettier itself),
 `openapi/` (the spec stays as the backend emits it), `package-lock.json`, and **`*.md`** — guidelines are
 hand-formatted with compact tables (Prettier would pad every table: bigger diffs and more tokens for AI agents).
 
@@ -71,8 +72,8 @@ Install the **ESLint** and **Prettier** extensions in VS Code and turn on *Forma
 | `format` / `format:check` | `prettier --write .` / `prettier --check .` |
 | `typecheck` | `tsc -b --noEmit` |
 | `test` / `test:watch` | `vitest run` / `vitest` |
-| `generate:api` | `orval` (reads `orval.config.ts`) |
-| `api:pull` | download `http://localhost:8080/v3/api-docs.yaml` into `openapi/tsolve-api.yaml` |
+| `generate:api` | `orval --config orval.config.ts` |
+| `api:pull` | `node scripts/pull-api.mjs`: download `http://localhost:8080/v3/api-docs.yaml` (or `$API_DOCS_URL`) into `openapi/tsolve-api.yaml` |
 
 `npm ci` (not `npm install`) everywhere except when you deliberately add a dependency. Node version comes
 from `.nvmrc` (24); `engines` in `package.json` allows 22.22.2+ or 24.15+ (jsdom 30 minimum).
@@ -100,7 +101,7 @@ npm run build
 Use Node from `frontend/.nvmrc` and cache `~/.npm` keyed on `frontend/package-lock.json`.
 
 **SonarQube Cloud** (`sonar-project.properties`, DevOps):
-`sonar.exclusions=frontend/src/shared/api/generated/**,frontend/public/mockServiceWorker.js,frontend/dist/**`
+`sonar.exclusions=frontend/src/shared/api/generated/**,frontend/dist/**`
 · `sonar.tests=frontend/src` with `sonar.test.inclusions=**/*.test.ts,**/*.test.tsx`.
 *Why:* generated code is thousands of lines that would eat the free plan's 50k-LOC limit and report
 "duplication" nobody can fix.

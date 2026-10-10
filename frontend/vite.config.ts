@@ -1,11 +1,17 @@
 /// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
+import { msw } from 'msw/vite';
 import { defineConfig } from 'vite';
 
 // Build, dev server and test runner share this one config (guideline 11).
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Mock mode: serves MSW's worker script (/mockServiceWorker.js) from node_modules on the dev server, so
+    // it is never committed and always matches the installed msw version. Dev server only.
+    { ...msw({ mode: 'worker-only' }), apply: 'serve' },
+  ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

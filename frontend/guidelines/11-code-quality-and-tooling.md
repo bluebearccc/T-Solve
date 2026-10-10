@@ -19,8 +19,9 @@
 | Generated API up to date | `npm run generate:api` + no git diff | yes |
 | SonarQube Cloud | (CI, DevOps) | no — advisory |
 
-Run these before every push: `npm run lint && npm run typecheck && npm run test` (formatting is fixed on
-save and by the pre-commit hook; run `npm run format:check` if you are unsure).
+Run these before every push: `npm run format:check && npm run lint && npm run typecheck && npm run test`
+(`npm run format` fixes formatting). Format On Save and, once DevOps adds it, the pre-commit hook (§5)
+keep formatting right as you go.
 
 ## 2. ESLint (flat config, ESLint 10)
 
@@ -108,7 +109,12 @@ Use Node from `frontend/.nvmrc` and cache `~/.npm` keyed on `frontend/package-lo
 *Why:* generated code is thousands of lines that would eat the free plan's 50k-LOC limit and report
 "duplication" nobody can fix.
 
-**Dependabot:** weekly for `/frontend` (npm); group minor/patch updates into one PR; majors one by one —
+**Main Caddy (per environment, DevOps):** HTTPS and HSTS; `/api/*` → the backend; everything else →
+`reverse_proxy <web app container>:8080`. The web app image has its own `Caddyfile` that only serves the
+built files (§6) — the two never overlap. Health check: `GET /healthz` → 200.
+
+**Dependabot:** weekly for `/frontend` (npm, and `docker` for the two base images in the `Dockerfile`);
+group minor/patch updates into one PR; majors one by one —
 the FE Lead checks them against [13](13-decision-log.md) (e.g. TypeScript 7 is held back on purpose; keep
 `typescript` on `~6.0`).
 
@@ -160,7 +166,8 @@ a Dockerfile change with `hadolint Dockerfile`.
 
 ## 7. Checklist
 
-- [ ] `npm run lint && npm run typecheck && npm run test` pass; no new warnings you could fix.
+- [ ] `npm run format:check && npm run lint && npm run typecheck && npm run test` pass; no new warnings
+  you could fix.
 - [ ] No `eslint-disable` without a reason; no config files changed in a feature PR.
 - [ ] Spec changed → `generate:api` run and committed.
 

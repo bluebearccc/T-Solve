@@ -35,7 +35,8 @@ Each rule is enforced by a tool where possible (marked 🔒). Details and exampl
    → [01](guidelines/01-project-structure.md)
 3. **Never edit `src/shared/api/generated/`.** Change `openapi/tsolve-api.yaml` and run
    `npm run generate:api` (CI fails if the two differ). Never hand-write API types or `fetch` calls;
-   import API code only from `@/shared/api`. 🔒 → [06](guidelines/06-data-layer.md)
+   import API code only from `@/shared/api` (tests and mocks may also import the generated `*.msw`
+   handlers). 🔒 → [06](guidelines/06-data-layer.md)
 4. **Server data lives only in TanStack Query.** No `fetch` in `useEffect`, no global store, no copying
    query data into `useState`. → [06](guidelines/06-data-layer.md)
 5. **System messages come only from the MSG catalog** (`showMessage('MSG18', { count })`, `msg('MSG01', …)`).
@@ -51,10 +52,11 @@ Each rule is enforced by a tool where possible (marked 🔒). Details and exampl
    → [08](guidelines/08-routing-and-access.md)
 10. **Do not edit `src/app/` or `src/shared/` inside a feature PR** without the FE Lead's review. The
     four registration files are pre-filled for all features — you should not need to touch them.
-    🔒 (CODEOWNERS) → [02](guidelines/02-conflict-avoidance.md)
+    🔒 (CODEOWNERS, once DevOps adds the lines from 02 §5) → [02](guidelines/02-conflict-avoidance.md)
 11. **No new npm dependency** without FE Lead approval and an entry in the decision log; add it in its own
     small PR. → [02](guidelines/02-conflict-avoidance.md), [13](guidelines/13-decision-log.md)
-12. **Before you say "done":** `npm run lint && npm run typecheck && npm run test` must pass.
+12. **Before you say "done":** `npm run format:check && npm run lint && npm run typecheck && npm run test`
+    must pass (`npm run format` fixes formatting).
     → [11](guidelines/11-code-quality-and-tooling.md)
 
 ## npm scripts

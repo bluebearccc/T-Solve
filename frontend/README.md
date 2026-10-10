@@ -4,7 +4,8 @@ React single-page app for T-Solve — the knowledge layer next to Jira. 25 scree
 Manager, Project Manager and Staff. The T-Solve Jira App is a separate app and is not in this folder.
 
 **New here? Read [`AGENTS.md`](AGENTS.md) first** — hard rules, scripts and the guideline reading order
-(the same file your AI coding agent reads).
+(the same file your AI coding agent reads). Then build your first screen with the walkthrough in
+[guideline 12 §1](guidelines/12-workflow.md).
 
 ## Prerequisites
 
@@ -57,7 +58,7 @@ cookie works without CORS settings.
 | `npm run generate:api` | Regenerate the API client from `openapi/tsolve-api.yaml` |
 | `npm run api:pull` | Download the spec from the local backend |
 
-Before pushing: `npm run lint && npm run typecheck && npm run test`.
+Before pushing: `npm run format:check && npm run lint && npm run typecheck && npm run test`.
 
 ## Docker
 

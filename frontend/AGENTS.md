@@ -34,7 +34,8 @@ Each rule is enforced by a tool where possible (marked 🔒). Details and exampl
 2. **Import a feature only through its `index.ts`.** Never reach into another feature's folders. 🔒
    → [01](guidelines/01-project-structure.md)
 3. **Never edit `src/shared/api/generated/`.** Change `openapi/tsolve-api.yaml` and run
-   `npm run generate:api`. Never hand-write API types or `fetch` calls. 🔒 → [06](guidelines/06-data-layer.md)
+   `npm run generate:api` (CI fails if the two differ). Never hand-write API types or `fetch` calls;
+   import API code only from `@/shared/api`. 🔒 → [06](guidelines/06-data-layer.md)
 4. **Server data lives only in TanStack Query.** No `fetch` in `useEffect`, no global store, no copying
    query data into `useState`. → [06](guidelines/06-data-layer.md)
 5. **System messages come only from the MSG catalog** (`showMessage('MSG18', { count })`, `msg('MSG01', …)`).

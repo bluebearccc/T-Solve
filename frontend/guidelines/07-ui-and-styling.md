@@ -97,22 +97,25 @@ pagination, MSG texts, upload limits). Using the raw one silently skips the rule
 ### U3 — Custom CSS only in a CSS Module next to its component, using token variables.
 
 ```css
-/* ReviewQueueTable.module.css */
-.selectionBar {
-  padding: var(--ant-padding-sm) var(--ant-padding);
-  background: var(--ant-color-primary-bg);
-  border-radius: var(--ant-border-radius);
+/* features/review/pages/ReviewQueuePage.module.css */
+.card {
+  padding: var(--ant-padding-lg);
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-bg-container);
+  box-shadow: var(--ant-box-shadow-tertiary);
 }
 ```
 
 ```tsx
-import styles from './ReviewQueueTable.module.css';
-<div className={styles.selectionBar}>…</div>
+import styles from './ReviewQueuePage.module.css';
+<div className={styles.card}>…</div>
 ```
 
-- ❌ No hex/rgb colours, no pixel font sizes — use `var(--ant-…)`.
+- ❌ No hex/rgb colours, no pixel font sizes — use `var(--ant-…)`. (One exception in the kit: the Figma
+  text style "Number" 30/38 in `StatCard`, which has no antd token.)
 - ❌ No `style={{…}}` except for values computed at runtime (e.g. a chart width).
-- ❌ No global CSS (the one exception: antd's `reset.css`, imported once in `main.tsx`), no
+- ❌ No global CSS (the exceptions: antd's `reset.css` and the `@fontsource/inter` font files, imported once
+  in `main.tsx`), no
   `:global(.ant-…)` overrides, no `!important`. antd 6 changed many internal DOM
   structures; selectors on `.ant-*` internals break on upgrades. If a kit component needs a tweak, the
   FE Lead adds it in `shared/ui` (antd's `classNames`/`styles` props).
@@ -135,8 +138,9 @@ horizontally, the menu may not collapse below that.
 
 ## 5. App shell and menus
 
-`AppShell` (Figma "Web/App Shell") = left side menu (220 px, "Web/Menu Item") + top bar (product name,
-user menu with **My Profile** and **Log out**) + content area. One shell for all roles; the menu items come
+`AppShell` (Figma "Web/App Shell") = left side menu (252 px: logo + product name, then 220 px
+"Web/Menu Item" entries) + top bar (page title as H1, user menu with **My Profile** and **Log out**) +
+content area. One shell for all roles; the menu items come
 from `app/layout/menu-config.ts`, pre-filled with the approved menus (landing page first):
 
 | Role | Menu |
@@ -147,8 +151,9 @@ from `app/layout/menu-config.ts`, pre-filled with the approved menus (landing pa
 | Admin | User List · Workspace Settings · Jira Integration · Audit Log · Knowledge Dashboard |
 
 The selected item follows the current route: the longest menu path the URL starts with, so detail screens
-highlight their list (Ticket Detail → Ticket List); My Profile highlights nothing. In dev builds a small
-**role switcher** (bottom right) signs you in as any role or signs you out; it is not in production builds. Menu changes need a UI-decision change first — they are not a feature's choice.
+highlight their list (Ticket Detail → Ticket List); My Profile highlights nothing. In dev builds running on
+mocks (`VITE_API_MOCKING=true`) a small **role switcher** (bottom right) signs you in as any role or signs you
+out; it is not in production builds. Menu changes need a UI-decision change first — they are not a feature's choice.
 
 ## 6. Checklist
 
@@ -158,4 +163,4 @@ highlight their list (Ticket Detail → Ticket List); My Profile highlights noth
 - [ ] Looks right at 1366 × 768.
 
 ---
-*Last verified against code: not yet — token names, CSS variable names and kit props will be checked in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

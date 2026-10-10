@@ -11,13 +11,14 @@
 | Folder | `kebab-case` (except kit folders, below) | `features/ticket-import/`, `shared/routing/` |
 | File exporting **one React component** | `PascalCase.tsx`, same name as the component | `ReviewQueuePage.tsx`, `RejectTicketModal.tsx` |
 | File exporting **one hook** | `camelCase.ts`, same name as the hook | `useReviewQueue.ts` |
+| File grouping **related hooks** | `camelCase.ts`, named for the group | `useReviewDecisions.ts` (approve / reject / request changes) |
 | Any other file | `kebab-case.ts` | `feature-routes.ts`, `query-client.ts`, `date.ts`, `handlers.ts` |
-| Kit component folder in `shared/ui/` | `PascalCase/`, same name as the component | `shared/ui/StatusTag/StatusTag.tsx` + `index.ts` |
-| Test | same name as the file under test + `.test` | `ReviewQueuePage.test.tsx`, `date.test.ts` |
-| CSS Module | same name as its component + `.module.css` | `ReviewQueueTable.module.css` |
+| Kit component folder in `shared/ui/` | `PascalCase/`, named after the component, or after a small group of related ones | `shared/ui/StatusTag/StatusTag.tsx` + `index.ts`; `shared/ui/States/` (Empty, Loading, Error) |
+| Test | same name as the file under test + `.test` (a test for a whole small module: the folder's name) | `ReviewQueuePage.test.tsx`, `date.test.ts`, `shared/forms/forms.test.tsx` |
+| CSS Module | same name as its component (or its kit group folder) + `.module.css` | `ReviewQueueToolbar.module.css`, `Cards/Cards.module.css` |
 
-`shared/ui/` is the one place where folders are PascalCase, because each folder *is* one component
-(component file, its CSS Module and its test together). Everywhere else folders are kebab-case.
+`shared/ui/` is the one place where folders are PascalCase, because each folder *is* one component or one
+small group of related components (component files, CSS Module and test together). Everywhere else folders are kebab-case.
 
 *Why:* the file name tells you what it exports, so search ("go to file") finds it instantly. Lower-case
 folders avoid trouble on Windows and macOS, whose file systems ignore case while git does not — to
@@ -46,7 +47,7 @@ change only the case of a file name, use `git mv OldName.tsx NewName.tsx`, never
 | Module-level constant | `UPPER_SNAKE_CASE` | `REVIEW_QUEUE_POLL_MS = 5_000` |
 | Fixed list of values | `as const` array + union type | see below |
 | Route path param | `camelCase` + `Id` | `/tickets/:ticketId` |
-| URL search param | `camelCase` | `?department=…&tab=csv` |
+| URL search param | `camelCase` | `?departmentId=2&tab=csv` |
 | CSS Module class | `camelCase` | `.selectionBar` → `styles.selectionBar` |
 | Feature routes export | `<feature>Routes` (camelCase) | `reviewRoutes`, `ticketImportRoutes` |
 
@@ -72,18 +73,20 @@ so invalidation after a mutation cannot silently miss. Details in [06](06-data-l
 
 ## 5. Business vocabulary (from the glossary — use exactly)
 
-Code names follow the API (generated); UI text follows the SRS. The API value spellings below are what
-our committed OpenAPI stub uses; if the backend publishes different spellings, the generated code wins
+Code names follow the API (generated); UI text follows the SRS. `Role`, `ProjectRole` and `TicketSource` come
+from our committed OpenAPI stub; the other API values are the agreed spellings (also the `StatusTag` keys)
+until the backend publishes them. If the backend publishes different spellings, the generated code wins
 and this table is updated.
 
 | Glossary term | In code | API values | UI text (exact) |
 |---|---|---|---|
 | Workspace | `workspace` | — | Workspace |
-| Department | `department`, `departmentId` | status `ACTIVE`, `DELETED` | Department |
+| Department | `department`, `departmentId` | status `ACTIVE`, `DELETED` (no status tag — the Figma kit has none) | Department |
 | Project | `project`, `projectId` | status `ACTIVE`, `REMOVED` | Project · Active / Removed |
 | Jira project | `jiraProjectKey` | — | Jira project key |
 | Project member | `projectMember`, `members` | — | Members |
 | Role | `Role` | `ADMIN`, `DEPARTMENT_MANAGER`, `PROJECT_MANAGER`, `STAFF` | Admin · Department Manager · Project Manager · Staff |
+| Role in a Project | `ProjectRole` (`roleInProject`) | `PROJECT_MANAGER`, `MEMBER` | — (labels come with Project Detail, from the SRS) |
 | User account status | `userStatus` | `ACTIVE`, `DEACTIVATED` | Active / Deactivated |
 | Ticket | `ticket`, `ticketId` | — | ticket / Ticket |
 | Source ticket ID | `sourceTicketId` | — | Ticket ID |
@@ -133,4 +136,4 @@ two digits. Retired codes (MSG09, MSG11–15, MSG17, MSG23–28, MSG37, MSG48, M
 in the catalog, so TypeScript rejects them.
 
 ---
-*Last verified against code: not yet — written before the scaffold.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

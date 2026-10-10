@@ -63,8 +63,11 @@ Before pushing: `npm run lint && npm run typecheck && npm run test`.
 
 ```bash
 docker build -t tsolve-frontend .
-docker run -p 8081:80 tsolve-frontend   # static files served by Caddy
+docker run --rm -p 8081:8080 tsolve-frontend   # http://localhost:8081 — static files served by Caddy
 ```
+
+The image only serves the built files; `/api` answers 404 inside it. Details:
+[guideline 11 §6](guidelines/11-code-quality-and-tooling.md).
 
 ## Where things are
 

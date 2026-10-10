@@ -24,7 +24,7 @@ cover end-to-end flows on staging.
 
 | Write tests for | Typically |
 |---|---|
-| **Kit components** (`shared/ui`) | each variant renders the right text/role; StatusTag label per status; DataTable empty/loading/error; upload limits → MSG40/MSG62 |
+| **Kit components** (`shared/ui`) | each variant renders the right text/role; StatusTag label per status; DataTable empty/loading/error; upload limits → MSG40/MSG62 (once the upload components exist) |
 | **Logic** in `shared/` (`date.ts`, `rules`, `msg()` templating, `applyApiErrors`, landing page per role) | plain unit tests, many cases, fast |
 | **One page test per feature** (minimum) | happy path + empty state + error state, through MSW |
 | **Every mutation flow you build** | confirm → request sent with the right body → MSG toast → list refreshed |
@@ -90,7 +90,7 @@ Test file sits next to its subject: `ReviewQueuePage.test.tsx`. `describe` = the
 ## 4. Example — a page test
 
 ```tsx
-// features/review/ReviewQueuePage.test.tsx
+// features/review/pages/ReviewQueuePage.test.tsx (shortened)
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server } from '@/mocks/server';
@@ -101,7 +101,10 @@ import { renderApp } from '@/test/render';
 describe('ReviewQueuePage', () => {
   it('lists pending tickets of my Projects', async () => {
     renderApp('/review-queue', { role: 'PROJECT_MANAGER' });
-    expect(await screen.findByRole('row', { name: /ITSUP-1031/ })).toBeInTheDocument();
+    // The first findBy also loads the lazy page module: give it more time (§6).
+    expect(
+      await screen.findByRole('row', { name: /ITSUP-1031/ }, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
   it('shows MSG16 when no tickets are waiting', async () => {
@@ -146,8 +149,21 @@ src/mocks/handlers.ts — every handler, first match wins:
   names, every status your screen shows:
   ```ts
   import { getGetReviewQueueMockHandler } from '@/shared/api/generated/review/review.msw';
-  export const handlers: HttpHandler[] = [getGetReviewQueueMockHandler(({ request }) => pageOf(tickets, request))];
+  export const handlers: HttpHandler[] = [
+    // The resolver must return a ReviewQueuePage: { content, page: { size, number, totalElements, totalPages } }
+    getGetReviewQueueMockHandler(async ({ request }) => {
+      await delay(MOCK_DELAY_MS);
+      const url = new URL(request.url);
+      const size = Number(url.searchParams.get('size')) || 20;
+      const page = Number(url.searchParams.get('page')) || 0;
+      return {
+        content: tickets.slice(page * size, page * size + size),
+        page: { size, number: page, totalElements: tickets.length, totalPages: Math.ceil(tickets.length / size) },
+      };
+    }),
+  ];
   ```
+  The full version (filter and sort too) is `features/review/mocks/handlers.ts`.
 - Errors: `problem(status, code?, { params, fieldErrors })` from `@/shared/api/mocks` builds the agreed error
   body. Latency: `await delay(MOCK_DELAY_MS)` (`delay` from `msw`) — 400 ms in the browser, 0 in tests.
 - Who is signed in: the dev role switcher (browser) or the `role` option of `renderApp` (tests) choose which
@@ -177,4 +193,4 @@ more is doing too much; split it.
 - [ ] `npm run test` passes locally.
 
 ---
-*Last verified against code: not yet — helper names, MSW option names and the example will be checked in Step 5.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

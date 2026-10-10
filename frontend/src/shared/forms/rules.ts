@@ -12,7 +12,7 @@ export const rules = {
     whitespace: true,
     message: msg('MSG01', { field_name: label }),
   }),
-  /** MSG02 "{field_name} must not exceed {max_length} characters." Pair with `showCount` on the input. */
+  /** MSG02 "{field_name} must not exceed {max_length} characters." Pair with `count={{ show: true, max }}` on the input. */
   maxLength: (label: string, max: number): FormRule => ({
     max,
     message: msg('MSG02', { field_name: label, max_length: max }),

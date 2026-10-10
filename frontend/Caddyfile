@@ -1,0 +1,51 @@
+# Caddy inside the T-Solve web app image: serves the built files (dist/ → /srv) on port 8080.
+# HTTPS, HSTS and the /api route belong to the environment's main Caddy (DevOps), which sends every
+# path except /api/* to this container. Guideline 11 §6 explains each block.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		# What the app loads: its own scripts, fonts and API. antd writes its CSS at run time into
+		# <style> tags, hence 'unsafe-inline' for styles only. A different API origin
+		# (VITE_API_BASE_URL) must be added to connect-src.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# For the Docker health check.
+	handle /healthz {
+		respond "OK" 200
+	}
+
+	# API calls never belong here. A 404 (instead of index.html) makes a routing mistake show up as
+	# an API error, not as HTML read as JSON.
+	handle /api/* {
+		respond 404
+	}
+
+	# Build files have a content hash in their name and never change: cache them for a year.
+	# A missing one is a real 404 (not cached), so an old tab asking for a deleted chunk does not get
+	# index.html.
+	handle /assets/* {
+		@built file
+		header @built Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else: the file if it exists (favicon.svg), otherwise index.html, so /review-queue
+	# works on reload. Always revalidated, so a new deploy is picked up on the next page load.
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

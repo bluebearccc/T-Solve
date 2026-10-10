@@ -32,7 +32,7 @@ edit these files.
 |---|---|---|
 | `app/router/feature-routes.ts` | one line per feature: `...reviewRoutes,` | export `<feature>Routes` from your `index.ts` |
 | `app/layout/menu-config.ts` | the approved menu per role (UI decisions 04/10) | nothing — menus are fixed by design |
-| `shared/routing/paths.ts` | all 25 screen paths and builders | use `paths.reviewQueue`, `paths.ticketDetail(id)` |
+| `shared/routing/paths.ts` | paths and builders for the 19 routed screens (popups have none) | use `paths.reviewQueue`, `paths.ticketDetail(id)` |
 | `mocks/handlers.ts` | one line per feature's `mocks/handlers.ts` | write handlers in your feature's `mocks/handlers.ts` |
 
 Every feature folder already exists with its `index.ts`, its `routes.ts` (all its screens) and a placeholder
@@ -116,4 +116,4 @@ guidelines) falls back to `@fe-lead`.
 - **Don't rename or move shared files in a feature PR.**
 
 ---
-*Last verified against code: not yet — written before the scaffold.*
+*Last verified against code: 2026-10-10, step 5.5 — every path, name, rule and ✅ example checked against the scaffold.*

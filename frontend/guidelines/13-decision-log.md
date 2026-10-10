@@ -46,6 +46,7 @@
 | FE-36 | Kit built in step 5.4; uploads and date-range rule deferred | Approved (step 5.4) |
 | FE-37 | List state in the URL with `useListSearchParams` | Approved (step 5.4) |
 | FE-38 | Mock data is reset after every test | Approved (step 5.4) |
+| FE-39 | Docker image: pinned Node build + non-root Caddy on 8080, CSP | Proposed (step 5.5) |
 
 ---
 
@@ -121,8 +122,8 @@ independent so five people can work in parallel; enforced by CI, not memory.
 minimum, which is stricter than React Router 8's 22.22; corrected during the scaffold).
 *Why:* supported until 2028; covers the whole project.
 
-**FE-16 — Dates.** dayjs (already an antd dependency) with one formatter: `dd/MM/yyyy HH:mm`,
-Asia/Ho_Chi_Minh (SRS III, NFR 1.1). *Options:* date-fns, Intl only. *Why:* no extra dependency; antd pickers use it.
+**FE-16 — Dates.** dayjs (already an antd dependency) with one format, `DD/MM/YYYY HH:mm` (`formatDateTime`;
+`formatDate` = `DD/MM/YYYY`), Asia/Ho_Chi_Minh (SRS III, NFR 1.1). *Options:* date-fns, Intl only. *Why:* no extra dependency; antd pickers use it.
 
 **FE-17 — Git hooks and CI.** No Husky, lint-staged, commitlint or `.github/` files in `frontend/`; DevOps
 owns them. The frontend provides configs and npm scripts ([11](11-code-quality-and-tooling.md) §5).
@@ -182,11 +183,11 @@ no `PageHeader` component. *Why:* the Figma App Shell puts the page title in the
 shell, not to each page; one source (the route) keeps header, tab and menu consistent.
 
 **FE-29 — Library chunks and antd reset (2026-10-09, step 5.2).** `vite.config.ts` splits React, antd and other
-libraries into their own chunks; `antd/dist/reset.css` is the only global CSS. *Why:* our code is ~20 kB and
+libraries into their own chunks; `antd/dist/reset.css` (with the Inter font files) is the only global CSS. *Why:* our code is ~20 kB and
 changes every deploy, while the libraries (about 270 kB gzipped) rarely change, so browsers keep
 them cached; without a reset the browser's default `body` margin offsets the shell.
-*Update (step 5.4):* with Table, Form, Modal and Select in use the antd chunk is ~800 kB (~260 kB
-gzipped), so `chunkSizeWarningLimit` is 1000 kB. The warning would otherwise show on every build and
+*Update (step 5.4):* with Table, Form, Modal and Select in use the libraries are ~370 kB gzipped; the antd
+chunk alone is ~800 kB (~260 kB gzipped), so `chunkSizeWarningLimit` is 1000 kB. The warning would otherwise show on every build and
 teach people to ignore build warnings; splitting antd further gains nothing because it is cached as one file.
 
 **FE-30 — MSW worker served by Vite; mock mode in dev builds only (2026-10-10, step 5.3).** `msw/vite` in
@@ -249,6 +250,16 @@ shared links show the same list (guideline 05 C8), and every list screen handles
 `handlers` and `resetMockData()`; `src/test/setup.ts` calls every `resetMockData()` after each test. Mutable mock
 data (e.g. the Review Queue removing decided tickets) lives in a module variable of the feature's mocks.
 *Why:* mocks that behave like the backend make mock mode convincing, and tests stay independent (guideline 10 T4).
+
+**FE-39 — Docker image (2026-10-10, step 5.5).** Stage 1 `node:24.21.0-alpine3.24` builds; stage 2
+`caddy:2.11.7-alpine` serves `dist/` on port **8080** as user 65534 (nobody), with `/healthz` for the Docker
+health check. Base images pinned to exact versions (Dependabot updates them). The Caddyfile serves files
+only: one-year immutable cache for `/assets/*`, a plain 404 for missing assets and for `/api/*`, SPA fallback
+with `no-cache` for everything else, and a Content-Security-Policy that allows only our own origin
+(`style-src 'unsafe-inline'` for antd's run-time CSS). HTTPS, HSTS and the `/api` route stay in DevOps's main
+Caddy. *Why:* a non-root process on an unprivileged port is the default every scanner (Sonar, hadolint) asks
+for; pinned images make two builds of one commit identical; the CSP belongs here because it depends on what
+the frontend loads, and it was checked in Chromium (no violations on the Review Queue and its popups).
 
 ## Working conventions (not code decisions)
 
